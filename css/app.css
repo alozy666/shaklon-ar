@@ -52,9 +52,9 @@ svg { display: block; }
 #ui button, #ui .screen, #ui .sheet { pointer-events: auto; }
 
 /* ---- شاشة البداية ---- */
-.screen { position: absolute; inset: 0; display: grid; place-items: center; padding: 20px;
+.screen { position: absolute; inset: 0; display: flex; padding: 84px 20px 20px;
   background: linear-gradient(135deg, #4f6fe3 0%, #6a5fdc 55%, #8a55d2 100%); overflow: auto; }
-.home-card { width: min(560px, 100%); background: var(--paper); border-radius: 32px; padding: 28px 24px 22px;
+.home-card { width: min(560px, 100%); margin: auto; background: var(--paper); border-radius: 32px; padding: 28px 24px 22px;
   text-align: center; box-shadow: 0 24px 60px rgba(10, 16, 60, .35); }
 .home-bot { width: 112px; height: 112px; margin: -76px auto 4px; background: var(--paper); border-radius: 50%;
   padding: 14px; box-shadow: 0 8px 20px rgba(10, 16, 60, .18); animation: bob 3s ease-in-out infinite; }
