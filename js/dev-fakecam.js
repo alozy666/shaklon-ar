@@ -1,21 +1,24 @@
-// للاختبار فقط (?fakecam=1): يستبدل الكاميرا بفيديو مصنوع من صورة البطاقة مائلة فوق «طاولة»،
+// للاختبار فقط (?fakecam=1): يستبدل الكاميرا بفيديو مصنوع من صورة مطبوعة مائلة فوق «طاولة»،
 // حتى يُختبر التتبّع كاملًا على حاسوب بلا كاميرا. لا يُحمَّل في الاستخدام العادي.
-export async function installFakeCamera(sceneKey) {
+// من الكونسول: __fakecam.hide(true) يخفي السجادة (كأن الكاميرا ابتعدت عنها).
+export async function installFakeCamera(name) {
   const img = new Image();
-  img.src = `assets/targets/card-${sceneKey}.png`;
-  await img.decode();
+  const load = async (n) => { img.src = `assets/targets/${n}.png`; await img.decode(); };
+  await load(name);
 
   const W = 1280, H = 720;
   const canvas = document.createElement('canvas');
   canvas.width = W; canvas.height = H;
   const g = canvas.getContext('2d');
   let t = 0;
+  let hidden = false;
 
   function draw() {
     t += 1 / 30;
     g.fillStyle = '#b7a488';
     g.fillRect(0, 0, W, H);
-    // إسقاط منظوري بسيط: الحافة البعيدة (العليا) أضيق، كما يرى الجهاز اللوحي بطاقة على الطاولة
+    if (hidden) return;
+    // إسقاط منظوري بسيط: الحافة البعيدة (العليا) أضيق، كما يرى الجهاز اللوحي ورقة على الطاولة
     const k = 0.55;
     const cw = 400 + Math.sin(t * 0.5) * 20;
     const ch = (cw * img.height) / img.width * 0.62;
@@ -33,4 +36,5 @@ export async function installFakeCamera(sceneKey) {
 
   const stream = canvas.captureStream(30);
   navigator.mediaDevices.getUserMedia = async () => stream;
+  window.__fakecam = { set: load, hide: (v) => { hidden = v; } };
 }

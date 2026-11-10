@@ -1,7 +1,16 @@
-// المسرح: يجهّز الرسم إما فوق بطاقة التتبّع (AR) أو بدون كاميرا (3D).
-// في الحالتين تحصل المشاهد على مجموعة world محورها Y للأعلى ووحدتها = عرض البطاقة.
+// المسرح: يجهّز الرسم إما فوق صورة الكاميرا (AR) أو بدون كاميرا (3D).
+// في الحالتين تحصل المشاهد على مجموعة world محورها Y للأعلى ووحدتها = عرض السجادة.
+//
+// وضع AR لا يعتمد على السجادة المطبوعة:
+//  - يظهر المشهد فورًا على «الأرض» أمام الكاميرا، ويبقى في مكانه بحساس الحركة.
+//  - إن ظهرت السجادة أمام الكاميرا التصق بها المشهد (تثبيت أدق)، وإن غابت بقي حيث كان.
+//  - placeAt() تنقله إلى أي مكان يلمسه المستخدم، وعندها يتوقف عن اتباع السجادة حتى followMat().
 import * as THREE from 'three';
-import { TARGETS_URL, AR_SCALE } from './config.js';
+import { TARGETS_URL } from './config.js';
+import { cameraToEarth } from './gyro.js';
+
+const UNIT = 1000;        // وحدات فضاء الكاميرا لكل «عرض سجادة» عند الوضع اليدوي
+const CAM_HEIGHT = 1.3;   // نفترض أن الكاميرا فوق الأرض بهذا القدر من عرض السجادة
 
 function addLights(world) {
   const ambient = new THREE.AmbientLight(0xffffff, 1.25);
@@ -22,31 +31,41 @@ function create3d(container) {
   scene.add(world);
   addLights(world);
 
+  // zoom = 1: إطار يتسع لمبنى مفحوص ومرفوع (2.1 وحدة)، والمبنى فوق منتصف الشاشة حتى لا تغطيه الأزرار السفلية.
+  // أصغر من 1: الكاميرا أقرب لعرض السجادة كلها.
+  let zoom = 1, zoomGoal = 1;
+  function place() {
+    const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
+    const dist = (Math.max(2.1, 1.9 / camera.aspect) / (2 * half)) * zoom;
+    const lookY = 0.1 + 0.2 * Math.min(1, Math.max(0, (zoom - 0.62) / 0.38));
+    camera.position.set(0, lookY + dist * 0.34, dist);
+    camera.lookAt(0, lookY, 0);
+  }
   function resize() {
     const w = container.clientWidth, h = container.clientHeight;
     renderer.setSize(w, h);
     camera.aspect = w / h;
-    // نُبقي عرض 2.2 وارتفاع 2.0 وحدة داخل الإطار مهما كان اتجاه الشاشة،
-    // ومكان فحص المبنى (y≈0.62) فوق منتصف الشاشة قليلًا حتى لا تغطيه الأزرار السفلية
-    const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const dist = Math.max(2.0, 2.2 / camera.aspect) / (2 * half);
-    camera.position.set(0, 0.5 + dist * 0.28, dist);
-    camera.lookAt(0, 0.5, 0);
     camera.updateProjectionMatrix();
+    place();
   }
   window.addEventListener('resize', resize);
   resize();
 
   return {
-    mode: '3d', renderer, scene, camera, world,
-    tracked: true, everTracked: true, lostFor: 0,
+    mode: '3d', renderer, scene, camera, world, onMat: false, manual: false,
     start: async () => {},
-    update() {},
+    update(dt) {
+      if (Math.abs(zoom - zoomGoal) < 0.002) return;
+      zoom += (zoomGoal - zoom) * Math.min(1, dt * 4);
+      place();
+    },
     orbit(dx) { world.rotation.y += dx; },
+    zoomTo(z, instant = false) { zoomGoal = z; if (instant) { zoom = z; place(); } },
+    placeAt() {}, followMat() {}, resizeBy() {},
   };
 }
 
-async function createAr(container, targetIndex) {
+async function createAr(container, scale) {
   const { MindARThree } = await import('mindar-image-three');
   const mindar = new MindARThree({
     container, imageTargetSrc: TARGETS_URL, maxTrack: 1,
@@ -54,53 +73,98 @@ async function createAr(container, targetIndex) {
     filterMinCF: 0.0001, filterBeta: 0.001, warmupTolerance: 3, missTolerance: 10,
   });
   const { renderer, scene, camera } = mindar;
-  const anchor = mindar.addAnchor(targetIndex);
+  const anchor = mindar.addAnchor(0);          // الصورة الوحيدة: سجادة المدينة
 
-  // world لا يتبع المرساة مباشرة: نلحقها بنعومة، ونُبقي آخر موضع إذا ضاعت البطاقة لحظة.
   const world = new THREE.Group();
   world.matrixAutoUpdate = false;
   world.visible = false;
   scene.add(world);
   addLights(world);
 
-  // Y للأعلى فوق البطاقة، مع تصغير المشهد قليلًا
-  const upFix = new THREE.Matrix4().makeRotationX(Math.PI / 2).scale(new THREE.Vector3(AR_SCALE, AR_SCALE, AR_SCALE));
+  // السجادة: Y للأعلى فوق الصورة، مع حجم المشهد المطلوب
+  const upFix = new THREE.Matrix4().makeRotationX(Math.PI / 2).scale(new THREE.Vector3(scale, scale, scale));
   const m = new THREE.Matrix4();
-  const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();
+  const p = new THREE.Vector3(), q = new THREE.Quaternion(), s = new THREE.Vector3();     // الموضع في إطار الكاميرا
   const tp = new THREE.Vector3(), tq = new THREE.Quaternion(), ts = new THREE.Vector3();
+  // الموضع نفسه في إطار الأرض (من حساس الحركة): هو ما نحتفظ به عندما لا نرى السجادة
+  const pe = new THREE.Vector3(), qe = new THREE.Quaternion();
+  const cam = new THREE.Quaternion(), inv = new THREE.Quaternion();
+  const ray = new THREE.Raycaster();
+  const dir = new THREE.Vector3();
+  let source = null;           // من أين جاء موضع المشهد: 'auto' تلقائي، 'mat' السجادة، 'manual' لمسة المستخدم
+  let wasLive = false;         // هل كانت قراءة الحساس حية في الإطار السابق
+  let size = 1;
 
   const stage = {
     mode: 'ar', renderer, scene, camera, world,
-    tracked: false, everTracked: false, lostFor: 0,
-    async start() { await mindar.start(); },
+    onMat: false,              // المشهد ملتصق بالسجادة الآن
+    manual: false,             // المستخدم وضعه بيده: لا نتبع السجادة
+    async start() {
+      await mindar.start();
+      stage.placeAt(0, -0.35, false);
+    },
     stop() { try { mindar.stop(); } catch { /* لم يبدأ */ } },
+
+    /** يضع المشهد على الأرض حيث تشير نقطة الشاشة (إحداثيات من -1 إلى 1). */
+    placeAt(x, y, manual = true) {
+      const live = cameraToEarth(cam);
+      ray.setFromCamera({ x, y }, camera);
+      dir.copy(ray.ray.direction).applyQuaternion(cam);
+      if (dir.y > -0.2) { dir.y = -0.2; dir.normalize(); }         // لا نرمي المشهد إلى الأفق
+      const t = Math.min((CAM_HEIGHT * UNIT) / -dir.y, 5 * UNIT);
+      pe.copy(dir).multiplyScalar(t);
+      pe.y = -CAM_HEIGHT * UNIT;
+      qe.setFromAxisAngle(THREE.Object3D.DEFAULT_UP, Math.atan2(-pe.x, -pe.z));   // واجهة المدينة نحو المستخدم
+      s.setScalar(UNIT * scale * size);
+      source = manual ? 'manual' : 'auto';
+      wasLive = live;
+      if (manual) { stage.manual = true; stage.onMat = false; }
+    },
+    followMat() { stage.manual = false; },
+    resizeBy(f) {
+      size = Math.min(2.2, Math.max(0.45, size * f));
+      if (!stage.onMat) s.setScalar(UNIT * scale * size);
+    },
+
     update(dt) {
-      stage.tracked = anchor.group.visible;
-      if (!stage.tracked) { stage.lostFor += dt; return; }
-      stage.lostFor = 0;
-      m.multiplyMatrices(anchor.group.matrix, upFix).decompose(tp, tq, ts);
-      if (!stage.everTracked) {
-        p.copy(tp); q.copy(tq); s.copy(ts);
-        stage.everTracked = true;
-        world.visible = true;
-      } else {
-        const k = 1 - Math.exp(-dt * 18);
-        p.lerp(tp, k); q.slerp(tq, k); s.lerp(ts, k);
+      const live = cameraToEarth(cam);
+      const seen = !stage.manual && anchor.group.visible;
+      if (live !== wasLive && source && !seen) {
+        // بدأت قراءات الحساس تصل (أو انقطعت): الوضع التلقائي نعيده مستويًا، وغيره نُبقيه حيث يراه المستخدم
+        if (source === 'auto') stage.placeAt(0, -0.35, false);
+        else { pe.copy(p).applyQuaternion(cam); qe.copy(cam).multiply(q); }
       }
+      wasLive = live;
+      if (seen) {
+        m.multiplyMatrices(anchor.group.matrix, upFix).decompose(tp, tq, ts);
+        if (!stage.onMat) { p.copy(tp); q.copy(tq); s.copy(ts); }          // ظهرت السجادة: ننتقل إليها فورًا
+        else { const k = 1 - Math.exp(-dt * 18); p.lerp(tp, k); q.slerp(tq, k); s.lerp(ts, k); }
+        pe.copy(p).applyQuaternion(cam);
+        qe.copy(cam).multiply(q);
+        stage.onMat = true;
+        source = 'mat';
+      } else if (source) {
+        stage.onMat = false;
+        inv.copy(cam).invert();
+        p.copy(pe).applyQuaternion(inv);
+        q.copy(inv).multiply(qe);
+      }
+      if (!source) return;
+      world.visible = true;
       world.matrix.compose(p, q, s);
       world.matrixWorldNeedsUpdate = true;
     },
-    orbit() {},
+    orbit() {}, zoomTo() {},
   };
   return stage;
 }
 
 /** يحاول AR أولًا إن طُلب، وإن تعذّرت الكاميرا يرجع إلى 3D. */
-export async function createStage({ mode, container, targetIndex }) {
+export async function createStage({ mode, container, scale = 1 }) {
   if (mode === 'ar') {
     let stage = null;
     try {
-      stage = await createAr(container, targetIndex);
+      stage = await createAr(container, scale);
       await stage.start();
       return stage;
     } catch (err) {

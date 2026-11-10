@@ -4,7 +4,7 @@ import * as THREE from 'three';
 const DRAG_PX = 9;
 
 export class Pointer {
-  /** handlers: { pickables(), tap(hit), drag(dx, dy, startHit), dragEnd() } */
+  /** handlers: { pickables(), tap(hit), drag(dx, dy, startHit, pickNow), dragEnd() } */
   constructor(element, camera, handlers) {
     this.el = element;
     this.camera = camera;
@@ -38,7 +38,7 @@ export class Pointer {
     if (!a.dragging && Math.hypot(e.clientX - a.x, e.clientY - a.y) > DRAG_PX) a.dragging = true;
     if (a.dragging) {
       const size = Math.min(this.el.clientWidth, this.el.clientHeight);
-      this.h.drag((e.clientX - a.lx) / size, (e.clientY - a.ly) / size, a.hit);
+      this.h.drag((e.clientX - a.lx) / size, (e.clientY - a.ly) / size, a.hit, () => this.pick(e.clientX, e.clientY));
     }
     a.lx = e.clientX; a.ly = e.clientY;
   }
@@ -48,7 +48,7 @@ export class Pointer {
     if (!a || e.pointerId !== a.id) return;
     this.active = null;
     if (a.dragging) this.h.dragEnd?.();
-    else this.h.tap(this.pick(e.clientX, e.clientY));
+    else { const hit = this.pick(e.clientX, e.clientY); this.h.tap(hit, this.ndc.x, this.ndc.y); }
   }
 
   cancel() {

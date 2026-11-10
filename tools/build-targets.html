@@ -2,46 +2,38 @@
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="utf-8">
-<title>تجهيز بطاقات التتبّع</title>
+<title>تجهيز صور التتبّع</title>
 <link rel="stylesheet" href="../css/app.css">
 <style>
   html, body { overflow: auto; height: auto; background: #eef2ff; }
   body { padding: 24px; user-select: text; }
-  canvas { width: 360px; height: 270px; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.2); margin: 8px; }
+  canvas { width: 320px; height: 240px; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.2); margin: 8px; }
   #status { font-size: 22px; font-weight: 800; }
 </style>
 </head>
 <body>
-<h1>تجهيز بطاقات التتبّع</h1>
-<p>أداة تطوير: ترسم صور البطاقات الثلاث، وتحفظها في <code>assets/targets/</code>، ثم تبني ملف التتبّع <code>targets.mind</code>.
-تعمل فقط مع الخادم المحلي <code>tools/serve.mjs</code>. بعد أي تغيير في رسم البطاقة يجب إعادة طباعة البطاقات.</p>
+<h1>تجهيز صور التتبّع</h1>
+<p>أداة تطوير: ترسم «سجادة المدينة» وتحفظها في <code>assets/targets/</code>، ثم تبني ملف التتبّع <code>targets.mind</code>.
+تعمل فقط مع الخادم المحلي <code>tools/serve.mjs</code>. بعد أي تغيير في الرسم يجب إعادة طباعة السجادة.</p>
 <p id="status">جارٍ الرسم...</p>
-<div id="cards"></div>
+<div id="out"></div>
 
 <script type="module">
 import { Compiler } from '../vendor/mindar/mindar-image.prod.js';
 
-// ترتيب البطاقات هنا = رقم target في js/config.js
-const CARDS = [
-  { key: 'city',     title: 'مدينة شكلون',   a: '#3f5fd8', b: '#1c2a78', seed: 11 },
-  { key: 'mystery',  title: 'المجسم الغامض', a: '#7b5bd6', b: '#3a2a86', seed: 23 },
-  { key: 'district', title: 'الحيّ الجديد',  a: '#17a589', b: '#0c5f6a', seed: 37 },
-];
-const PALETTE = ['#f5a623', '#ffffff', '#ff6b8b', '#ffe27a', '#7fd8ff', '#b79bff', '#5fe0b7', '#ff8a4c'];
-const W = 1000, H = 750;
 const status = document.getElementById('status');
+const PALETTE = ['#f5a623', '#ffffff', '#ff6b8b', '#ffe27a', '#7fd8ff', '#b79bff', '#5fe0b7', '#ff8a4c'];
+const INK = '#141b45';
 
 function rng(seed) {
   let s = seed >>> 0;
   return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
-
 function roundRect(g, x, y, w, h, r) {
   g.beginPath();
   g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
   g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
 }
-
 function shape(g, kind, size) {
   g.beginPath();
   if (kind === 0) g.rect(-size / 2, -size / 2, size, size);
@@ -50,84 +42,130 @@ function shape(g, kind, size) {
   else { g.moveTo(0, -size * 0.58); g.lineTo(size * 0.6, size * 0.45); g.lineTo(-size * 0.6, size * 0.45); g.closePath(); }
 }
 
-function drawCard(canvas, card, robot) {
-  canvas.width = W; canvas.height = H;
-  const g = canvas.getContext('2d');
-  const rand = rng(card.seed);
+// ---- سجادة المدينة: 1000×750، وأماكن المباني تطابق LAYOUT في js/scenes/city.js ----
+const MW = 1000, MH = 750;
+const at = (x, z) => [(x + 0.5) * MW, ((z + 0.375) / 0.75) * MH];
+const PLOTS = [
+  { x: 0.33, z: 0.17, r: 150, color: '#4f6fe3' },      // البيت
+  { x: 0.33, z: -0.19, r: 118, color: '#17a589' },     // البرج
+  { x: -0.33, z: -0.19, r: 150, color: '#ef8a2b' },    // الهرم
+  { x: 0, z: -0.02, r: 128, color: '#7b5bd6', q: true }, // المجسم الغامض
+];
 
-  const grad = g.createLinearGradient(0, 0, W, H);
-  grad.addColorStop(0, card.a); grad.addColorStop(1, card.b);
-  g.fillStyle = grad; g.fillRect(0, 0, W, H);
-
-  // نقاط صغيرة كثيرة: تفاصيل دقيقة تساعد التتبّع
-  for (let i = 0; i < 260; i++) {
-    g.fillStyle = `rgba(255,255,255,${0.12 + rand() * 0.3})`;
-    g.beginPath(); g.arc(rand() * W, rand() * H, 2 + rand() * 5, 0, 7); g.fill();
+function drawMat(g, robot) {
+  const rand = rng(71);
+  const bg = g.createLinearGradient(0, 0, MW, MH);
+  bg.addColorStop(0, '#222c6b'); bg.addColorStop(1, '#101538');
+  g.fillStyle = bg; g.fillRect(0, 0, MW, MH);
+  for (let i = 0; i < 320; i++) {
+    g.fillStyle = `rgba(255,255,255,${0.1 + rand() * 0.3})`;
+    g.beginPath(); g.arc(rand() * MW, rand() * MH, 1.5 + rand() * 4, 0, 7); g.fill();
   }
 
-  // أشكال مستوية مبعثرة بلا تكرار منتظم، خارج اللوحة الوسطى
-  const panel = { x: 190, y: 190, w: 620, h: 370 };
+  // الطرق: حلقة حول المدينة وخطان متقاطعان، بخطوط بيضاء متقطعة
+  const road = (path) => {
+    g.lineJoin = 'round'; g.lineCap = 'round';
+    g.strokeStyle = INK; g.lineWidth = 62; path(); g.stroke();
+    g.strokeStyle = '#4a5590'; g.lineWidth = 50; path(); g.stroke();
+    g.setLineDash([22, 20]); g.strokeStyle = '#ffffff'; g.lineWidth = 5; path(); g.stroke(); g.setLineDash([]);
+  };
+  road(() => roundRect(g, 58, 58, MW - 116, MH - 116, 90));
+  road(() => { g.beginPath(); g.moveTo(MW / 2 + 6, 58); g.lineTo(MW / 2 - 30, MH - 58); });
+  road(() => { g.beginPath(); g.moveTo(58, MH / 2 - 26); g.lineTo(MW - 58, MH / 2 + 34); });
+
+  // زينة مبعثرة: أشجار وأشكال صغيرة، بعيدًا عن قطع المباني
   const placed = [];
   let tries = 0;
-  while (placed.length < 44 && tries++ < 4000) {
-    const size = 44 + rand() * 78;
-    const x = 40 + rand() * (W - 80), y = 40 + rand() * (H - 80);
-    const inPanel = x > panel.x - size * 0.7 && x < panel.x + panel.w + size * 0.7 && y > panel.y - size * 0.7 && y < panel.y + panel.h + size * 0.7;
-    if (inPanel || placed.some((p) => Math.hypot(p.x - x, p.y - y) < (p.size + size) * 0.62)) continue;
+  while (placed.length < 54 && tries++ < 6000) {
+    const size = 24 + rand() * 46;
+    const x = 30 + rand() * (MW - 60), y = 30 + rand() * (MH - 60);
+    const onPlot = PLOTS.some((p) => { const [px, py] = at(p.x, p.z); return Math.hypot(px - x, py - y) < p.r + size * 0.6; });
+    const onTitle = y > MH - 150 && Math.abs(x - 330) < 250;
+    if (onPlot || onTitle || placed.some((p) => Math.hypot(p.x - x, p.y - y) < (p.size + size) * 0.7)) continue;
     placed.push({ x, y, size });
-    g.save();
-    g.translate(x, y); g.rotate(rand() * Math.PI);
-    shape(g, Math.floor(rand() * 4), size);
-    g.fillStyle = PALETTE[Math.floor(rand() * PALETTE.length)];
-    g.fill();
-    g.lineWidth = 7; g.strokeStyle = '#141b45'; g.lineJoin = 'round'; g.stroke();
+    g.save(); g.translate(x, y);
+    if (rand() < 0.4) {                      // شجرة
+      g.beginPath(); g.arc(0, 0, size / 2, 0, 7); g.fillStyle = '#2fbf8a'; g.fill();
+      g.lineWidth = 5; g.strokeStyle = INK; g.stroke();
+      g.beginPath(); g.arc(-size * 0.14, -size * 0.14, size * 0.16, 0, 7); g.fillStyle = '#a8f0cf'; g.fill();
+    } else {
+      g.rotate(rand() * Math.PI);
+      shape(g, Math.floor(rand() * 4), size);
+      g.fillStyle = PALETTE[Math.floor(rand() * PALETTE.length)]; g.fill();
+      g.lineWidth = 5; g.strokeStyle = INK; g.lineJoin = 'round'; g.stroke();
+    }
     g.restore();
   }
 
-  // اللوحة الوسطى: شكلون واسم المشهد
-  g.save();
-  g.shadowColor = 'rgba(10,16,60,.45)'; g.shadowBlur = 24; g.shadowOffsetY = 8;
-  roundRect(g, panel.x, panel.y, panel.w, panel.h, 56); g.fillStyle = '#ffffff'; g.fill();
-  g.restore();
-  g.lineWidth = 9; g.strokeStyle = '#141b45'; roundRect(g, panel.x, panel.y, panel.w, panel.h, 56); g.stroke();
-  g.setLineDash([22, 16]); g.lineWidth = 5; g.strokeStyle = card.a;
-  roundRect(g, panel.x + 22, panel.y + 22, panel.w - 44, panel.h - 44, 40); g.stroke(); g.setLineDash([]);
+  // قطع المباني
+  for (const p of PLOTS) {
+    const [x, y] = at(p.x, p.z);
+    g.beginPath(); g.arc(x, y, p.r, 0, 7); g.fillStyle = '#eef2ff'; g.fill();
+    g.lineWidth = 8; g.strokeStyle = INK; g.stroke();
+    g.beginPath(); g.arc(x, y, p.r - 16, 0, 7); g.setLineDash([18, 12]); g.lineWidth = 7; g.strokeStyle = p.color; g.stroke(); g.setLineDash([]);
+    g.beginPath(); g.arc(x, y, p.r * 0.5, 0, 7); g.fillStyle = p.color; g.globalAlpha = 0.28; g.fill(); g.globalAlpha = 1;
+    if (p.q) {
+      g.fillStyle = p.color; g.font = '800 120px "Baloo Bhaijaan 2", sans-serif';
+      g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('؟', x, y + 8);
+    }
+  }
 
-  g.drawImage(robot, W / 2 - 95, panel.y + 34, 190, 190);
-  g.fillStyle = card.b; g.textAlign = 'center'; g.textBaseline = 'middle';
-  g.font = '800 92px "Baloo Bhaijaan 2", sans-serif';
-  g.fillText(card.title, W / 2, panel.y + 290);
+  // بوابة شكلون
+  const [bx, by] = at(-0.36, 0.1);
+  g.beginPath(); g.ellipse(bx, by, 78, 42, 0, 0, 7); g.fillStyle = '#7fe3ff'; g.fill();
+  g.lineWidth = 8; g.strokeStyle = INK; g.stroke();
+  g.beginPath(); g.ellipse(bx, by, 46, 22, 0, 0, 7); g.fillStyle = '#ffffff'; g.fill();
 
-  // إطار خارجي
-  g.lineWidth = 16; g.strokeStyle = '#ffffff'; roundRect(g, 8, 8, W - 16, H - 16, 36); g.stroke();
+  // العنوان
+  roundRect(g, 96, MH - 138, 470, 100, 40); g.fillStyle = '#ffffff'; g.fill();
+  g.lineWidth = 8; g.strokeStyle = INK; g.stroke();
+  g.drawImage(robot, 472, MH - 130, 84, 84);
+  g.fillStyle = '#1c2a78'; g.font = '800 64px "Baloo Bhaijaan 2", sans-serif';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText('مدينة شكلون', 286, MH - 84);
+
+  g.lineWidth = 16; g.strokeStyle = '#ffffff'; roundRect(g, 8, 8, MW - 16, MH - 16, 36); g.stroke();
 }
 
 async function save(name, body) {
   const res = await fetch(`/__save?name=${name}`, { method: 'POST', body });
   if (!res.ok) throw new Error('save failed: ' + name);
 }
+const toBlob = (canvas) => new Promise((r) => canvas.toBlob(r, 'image/png'));
+
+/** يرسم بمقياس k ويرجع اللوحة. */
+function render(w, h, k, draw) {
+  const canvas = document.createElement('canvas');
+  canvas.width = w * k; canvas.height = h * k;
+  const g = canvas.getContext('2d');
+  g.scale(k, k);
+  draw(g);
+  return canvas;
+}
 
 async function main() {
-  await document.fonts.load('800 92px "Baloo Bhaijaan 2"', 'مدينة شكلون');
+  await document.fonts.load('800 92px "Baloo Bhaijaan 2"', 'مدينة شكلون 1234 ؟');
   const robot = new Image(); robot.src = '../assets/icon.svg'; await robot.decode();
-
+  const out = document.getElementById('out');
   const images = [];
-  for (const card of CARDS) {
-    const canvas = document.createElement('canvas');
-    document.getElementById('cards').appendChild(canvas);
-    drawCard(canvas, card, robot);
-    const blob = await new Promise((r) => canvas.toBlob(r, 'image/png'));
-    await save(`card-${card.key}.png`, blob);
+  const track = async (canvas, name) => {
+    out.appendChild(canvas);
+    const blob = await toBlob(canvas);
+    await save(name, blob);
     const img = new Image(); img.src = URL.createObjectURL(blob); await img.decode();
     images.push(img);
-  }
+  };
+
+  await track(render(MW, MH, 1, (g) => drawMat(g, robot)), 'mat.png');
+  // نسخة عالية الدقة لطباعة السجادة مكبّرة (نفس الرسم تمامًا)
+  await save('mat-print.png', await toBlob(render(MW, MH, 3, (g) => drawMat(g, robot))));
 
   status.textContent = 'جارٍ بناء ملف التتبّع... 0%';
   const compiler = new Compiler();
   await compiler.compileImageTargets(images, (p) => { status.textContent = `جارٍ بناء ملف التتبّع... ${Math.round(p)}%`; });
   const data = await compiler.exportData();
   await save('targets.mind', data);
-  status.textContent = `تمّ: حُفظت 3 بطاقات وملف targets.mind (${Math.round(data.byteLength / 1024)} KB)`;
+  status.textContent = `تمّ: السجادة + targets.mind (${Math.round(data.byteLength / 1024)} KB)`;
   document.title = 'DONE';
 }
 main().catch((e) => { status.textContent = 'خطأ: ' + e.message; document.title = 'ERROR'; console.error(e); });

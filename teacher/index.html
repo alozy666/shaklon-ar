@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>صفحة المعلم — مدينة شكلون</title>
+<link rel="icon" href="../assets/icon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  html, body { height: auto; overflow: auto; background: #e9edfb; -webkit-user-select: text; user-select: text; }
+  body { padding: 16px; color: #1f2a5a; }
+  main { max-width: 900px; margin: 0 auto; display: grid; gap: 16px; }
+  header.page { display: flex; align-items: center; gap: 14px; }
+  header.page img { width: 64px; height: 64px; }
+  header.page h1 { margin: 0; font-size: clamp(24px, 5vw, 34px); font-weight: 800; color: #3a55c4; line-height: 1.2; }
+  header.page p { margin: 0; color: #5b6590; font-size: 16px; }
+  .card { background: #fff; border-radius: 22px; padding: 18px 20px; box-shadow: 0 4px 14px rgba(16, 24, 64, .1); }
+  .card h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+  .card h2 b { flex: none; width: 34px; height: 34px; border-radius: 50%; background: #f5a623; color: #fff; display: grid; place-items: center; font-size: 19px; }
+  .card > p { margin: 0 0 12px; color: #5b6590; font-size: 16px; }
+  .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-bottom: 12px; }
+  label { display: grid; gap: 4px; font-size: 15px; font-weight: 700; color: #5b6590; }
+  input, textarea, select { font: inherit; font-size: 18px; font-weight: 700; color: #1f2a5a; border: 2px solid #d5dcf5; border-radius: 12px; padding: 8px 12px; background: #f7f9ff; }
+  input:focus, textarea:focus { outline: 3px solid #b9c7fb; border-color: #4f6fe3; }
+  input[type=number] { width: 110px; }
+  #groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px; }
+  .group { background: #eef2ff; border-radius: 16px; padding: 10px; display: grid; gap: 6px; }
+  .group strong { display: flex; justify-content: space-between; align-items: center; font-size: 18px; }
+  .group small { font-weight: 700; color: #5b6590; font-size: 14px; }
+  .group textarea { min-height: 150px; resize: vertical; line-height: 1.6; background: #fff; }
+  .btn { background: #4f6fe3; color: #fff; font-size: 19px; font-weight: 800; border-radius: 999px; padding: 10px 26px; min-height: 48px; }
+  .btn.orange { background: #f5a623; }
+  .btn.ghost { background: #eef2ff; color: #3a55c4; }
+  .btn:active { transform: scale(.97); }
+  .qr-wrap { display: grid; grid-template-columns: minmax(220px, 300px) 1fr; gap: 18px; align-items: center; }
+  .qr-wrap .qr { background: #fff; border: 5px solid #4f6fe3; border-radius: 18px; padding: 10px; }
+  .qr-wrap .qr svg { width: 100%; height: auto; display: block; }
+  .steps-list { margin: 0; padding-inline-start: 22px; font-size: 17px; font-weight: 700; line-height: 1.9; }
+  code { direction: ltr; unicode-bidi: embed; font-size: 13px; background: #eef2ff; padding: 4px 8px; border-radius: 6px; word-break: break-all; display: block; margin-top: 8px; }
+  .warn { background: #fff1d6; border: 2px solid #f5a623; border-radius: 12px; padding: 8px 14px; font-weight: 700; color: #7a4b00; margin-bottom: 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 16px; font-weight: 700; }
+  th, td { padding: 8px 6px; border-top: 2px dashed #dfe4f7; text-align: start; vertical-align: top; }
+  thead th { border-top: 0; color: #5b6590; font-size: 14px; }
+  tr.g th { background: #eef2ff; font-size: 17px; border-radius: 8px; }
+  .ok { color: #18a589; } .no { color: #c0392b; } .wait { color: #8a92b5; }
+  .lvl { display: inline-block; padding: 2px 12px; border-radius: 99px; color: #fff; font-size: 14px; white-space: nowrap; }
+  .lvl.a { background: #18a589; } .lvl.b { background: #f5a623; } .lvl.c { background: #c0392b; }
+  .note { font-size: 14px; color: #5b6590; margin: 10px 0 0; }
+  @media (max-width: 620px) { .qr-wrap { grid-template-columns: 1fr; } }
+  @media print { body { background: #fff; padding: 0; } .no-print { display: none !important; } .card { box-shadow: none; padding: 0; } }
+</style>
+</head>
+<body>
+<main>
+  <header class="page">
+    <img src="../assets/icon.svg" alt="">
+    <div>
+      <h1>صفحة المعلم</h1>
+      <p>مدينة شكلون — وصف المجسمات (الصف الثاني). <a href="../">فتح التطبيق</a> · <a href="../cards/">الطباعة</a></p>
+    </div>
+  </header>
+
+  <section class="card no-print">
+    <h2><b>1</b>وزّع المجموعات</h2>
+    <p>اكتب أسماء أعضاء كل مجموعة، اسم في كل سطر. جهاز واحد لكل مجموعة.</p>
+    <div class="row">
+      <label>اسم الصف (اختياري)<input id="title" placeholder="ثاني 1"></label>
+      <label>عدد المجموعات<input id="count" type="number" min="1" max="8" value="5"></label>
+      <label>مدة التقييم الكلية (دقيقة)<input id="minutes" type="number" min="5" max="40" value="15"></label>
+      <label>مبانٍ لكل تلميذ<select id="per"><option value="1">1</option><option value="2" selected>2</option><option value="3">3</option></select></label>
+    </div>
+    <div id="groups"></div>
+    <p class="note" id="time-note"></p>
+    <div class="row" style="margin: 14px 0 0">
+      <button class="btn orange" id="make">أنشئ رمز الصف</button>
+      <button class="btn ghost" id="new-session" title="يمسح تقدّم المجموعات ونتائجها على أجهزتها عند مسح الرمز الجديد">جلسة جديدة</button>
+    </div>
+  </section>
+
+  <section class="card" id="code-card" hidden>
+    <h2><b>2</b>رمز الصف</h2>
+    <p class="no-print">اعرض هذا الرمز على الشاشة أو اطبعه.</p>
+    <div id="local-warn" class="warn" hidden>هذا عنوان محلي: الرمز لن يعمل على أجهزة التلاميذ. افتح هذه الصفحة من الموقع المنشور.</div>
+    <div class="qr-wrap">
+      <div class="qr" id="class-qr"></div>
+      <ol class="steps-list">
+        <li>تمسح كل مجموعة الرمز بكاميرا جهازها مرة واحدة.</li>
+        <li>تضغط «ابدأ» وتختار رقم مجموعتها.</li>
+        <li>تبدأ المغامرة: المدينة ثم «مهمة المحقق».</li>
+        <li>في التقييم يأخذ كل تلميذ الجهاز ويختار اسمه.</li>
+      </ol>
+    </div>
+    <code id="class-link" class="no-print"></code>
+    <div class="row no-print" style="margin: 10px 0 0"><button class="btn ghost" id="copy-link">نسخ الرابط</button></div>
+  </section>
+
+  <section class="card">
+    <h2><b>3</b>النتائج</h2>
+    <p class="no-print">بعد التقييم: افتح «للمعلم: النتائج» على جهاز كل مجموعة وامسح الرمز الظاهر بجهازك هذا، فتُضاف نتائجها هنا. أو الصق رمز النتائج في الخانة.</p>
+    <div class="row no-print">
+      <label style="flex: 1 1 260px">رمز نتائج أو رابطه<input id="paste" placeholder="الصق هنا" style="width: 100%"></label>
+      <button class="btn" id="import">أضف</button>
+    </div>
+    <div id="summary" class="note"></div>
+    <div id="results"></div>
+    <div class="row no-print" style="margin: 14px 0 0">
+      <button class="btn ghost" id="print">طباعة</button>
+      <button class="btn ghost" id="csv">تنزيل جدول (CSV)</button>
+      <button class="btn ghost" id="clear">مسح النتائج</button>
+    </div>
+    <p class="note">الأسماء والنتائج تُحفظ في متصفح هذا الجهاز وفي أجهزة المجموعات فقط، ولا تُرسل إلى أي خادم.</p>
+  </section>
+</main>
+
+<script src="../vendor/qrcode.js"></script>
+<script type="module">
+import { pack, unpack, secondsPerStudent, isCorrect, level, TASK_KEYS } from '../js/session.js';
+import { BUILDINGS, ANSWERS } from '../js/config.js';
+
+const KEY = 'shaklon-teacher-v2';
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clock = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+let data = { id: '', title: '', minutes: 15, per: 2, groups: ['', '', '', '', ''], results: {} };
+try { data = { ...data, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { /* جديد */ }
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(data)); } catch { /* تجاهل */ } };
+const names = (text) => text.split(/\n|،|,/).map((s) => s.trim()).filter(Boolean);
+
+// ---- 1) المجموعات ----
+function drawGroups() {
+  $('groups').replaceChildren(...data.groups.map((text, i) => {
+    const box = document.createElement('div');
+    box.className = 'group';
+    box.innerHTML = `<strong>المجموعة ${i + 1}<small></small></strong>`;
+    const area = document.createElement('textarea');
+    area.value = text;
+    area.placeholder = 'سارة\nعلي\nمريم\nحسن\nنور';
+    const paint = () => (box.querySelector('small').textContent = `${names(area.value).length} أعضاء`);
+    area.oninput = () => { data.groups[i] = area.value; save(); paint(); timeNote(); };
+    paint();
+    box.append(area);
+    return box;
+  }));
+  timeNote();
+}
+function timeNote() {
+  const sizes = data.groups.map((g) => names(g).length).filter(Boolean);
+  if (!sizes.length) { $('time-note').textContent = ''; return; }
+  const big = Math.max(...sizes);
+  $('time-note').textContent = `الوقت لكل تلميذ في مجموعة من ${big}: ${clock(secondsPerStudent(data.minutes, big))} (المدة ÷ عدد الأعضاء، ناقص 20 ثانية لتسليم الجهاز).`;
+}
+$('title').value = data.title;
+$('count').value = data.groups.length;
+$('minutes').value = data.minutes;
+$('per').value = data.per;
+$('title').oninput = (e) => { data.title = e.target.value; save(); };
+$('minutes').oninput = (e) => { data.minutes = Math.max(5, Math.min(40, Number(e.target.value) || 15)); save(); timeNote(); };
+$('per').onchange = (e) => { data.per = Number(e.target.value); save(); };
+$('count').oninput = (e) => {
+  const n = Math.max(1, Math.min(8, Number(e.target.value) || 1));
+  while (data.groups.length < n) data.groups.push('');
+  data.groups.length = n;
+  save(); drawGroups();
+};
+
+// ---- 2) رمز الصف ----
+function makeCode(fresh) {
+  const groups = data.groups.map(names).filter((g) => g.length);
+  if (!groups.length) { alert('اكتب أسماء مجموعة واحدة على الأقل.'); return; }
+  if (fresh || !data.id) { data.id = 's' + Date.now().toString(36); if (fresh) data.results = {}; }
+  save();
+  const base = new URL('../', location.href).href;
+  const link = `${base}?scene=city#c=${pack({ v: 2, id: data.id, t: data.title, m: data.minutes, p: data.per, g: groups })}`;
+  const qr = qrcode(0, 'L');
+  qr.addData(link);
+  qr.make();
+  $('class-qr').innerHTML = qr.createSvgTag({ cellSize: 4, margin: 2, scalable: true });
+  $('class-link').textContent = link;
+  $('local-warn').hidden = !/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+  $('code-card').hidden = false;
+  $('code-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  drawResults();
+}
+$('make').onclick = () => makeCode(false);
+$('new-session').onclick = () => { if (confirm('جلسة جديدة تمسح النتائج المجموعة هنا، وتمسح تقدّم المجموعات على أجهزتها عند مسح الرمز الجديد. متابعة؟')) makeCode(true); };
+$('copy-link').onclick = () => navigator.clipboard?.writeText($('class-link').textContent);
+
+// ---- 3) النتائج ----
+function importCode(text) {
+  const m = String(text).match(/(?:[#&]r=)?([\w-]{20,})\s*$/);
+  if (!m) return false;
+  try {
+    const r = unpack(m[1]);
+    if (!Array.isArray(r.r) || !Array.isArray(r.n)) return false;
+    data.results[r.g] = { names: r.n, rows: r.r, id: r.id };
+    save();
+    return true;
+  } catch { return false; }
+}
+function rowsOf(g) {
+  const res = data.results[g];
+  return res.names.map((name, i) => {
+    const r = res.rows.find((x) => x[0] === i);
+    if (!r) return { name, pending: true };
+    const items = r[2].map(([k, f, e, v]) => { const key = TASK_KEYS[k]; const answer = [f, e, v].map((n) => (n < 0 ? null : n)); return { key, answer, ok: isCorrect(key, answer) }; });
+    const ok = items.filter((it) => it.ok).length;
+    return { name, items, ok, total: items.length, seconds: r[1], level: level(ok, items.length) };
+  });
+}
+function drawResults() {
+  const groups = Object.keys(data.results).map(Number).sort((a, b) => a - b);
+  if (!groups.length) { $('results').innerHTML = '<p class="wait">لا نتائج بعد.</p>'; $('summary').textContent = ''; return; }
+  let done = 0, a = 0, b = 0, c = 0;
+  let html = '<table><thead><tr><th>التلميذ</th><th>إجاباته (الأوجه · الأحرف · الرؤوس)</th><th>الصحيح</th><th>المستوى</th><th>الوقت</th></tr></thead><tbody>';
+  for (const g of groups) {
+    html += `<tr class="g"><th colspan="5">المجموعة ${g + 1}</th></tr>`;
+    for (const r of rowsOf(g)) {
+      if (r.pending) { html += `<tr><th>${esc(r.name)}</th><td colspan="4" class="wait">لم يُقيَّم</td></tr>`; continue; }
+      done++;
+      const cls = r.level === 'حقّق الهدف' ? (a++, 'a') : r.level === 'حقّقه جزئيًا' ? (b++, 'b') : (c++, 'c');
+      const cells = r.items.map((it) => `<span class="${it.ok ? 'ok' : 'no'}">${esc(BUILDINGS[it.key].ar)}: ${it.answer.map((n) => (n === null ? '–' : n)).join(' · ')} ${it.ok ? '✓' : `✕ (${ANSWERS[it.key].join(' · ')})`}</span>`).join('<br>');
+      html += `<tr><th>${esc(r.name)}</th><td>${cells}</td><td>${r.ok}/${r.total}</td><td><span class="lvl ${cls}">${r.level}</span></td><td>${clock(r.seconds)}</td></tr>`;
+    }
+  }
+  $('results').innerHTML = html + '</tbody></table>';
+  $('summary').textContent = `قُيّم ${done} تلميذًا: حقّق الهدف ${a}، حقّقه جزئيًا ${b}، لم يحققه ${c}.`;
+}
+$('import').onclick = () => {
+  if (importCode($('paste').value)) { $('paste').value = ''; drawResults(); } else alert('الرمز غير صالح.');
+};
+$('print').onclick = () => print();
+$('clear').onclick = () => { if (confirm('مسح كل النتائج من هذه الصفحة؟')) { data.results = {}; save(); drawResults(); } };
+$('csv').onclick = () => {
+  const lines = [['المجموعة', 'التلميذ', 'المبنى', 'الأوجه', 'الأحرف', 'الرؤوس', 'صحيح', 'المستوى', 'الثواني']];
+  for (const g of Object.keys(data.results).map(Number).sort((x, y) => x - y)) {
+    for (const r of rowsOf(g)) {
+      if (r.pending) { lines.push([g + 1, r.name, 'لم يُقيَّم']); continue; }
+      for (const it of r.items) lines.push([g + 1, r.name, BUILDINGS[it.key].ar, ...it.answer.map((n) => n ?? ''), it.ok ? 'نعم' : 'لا', r.level, r.seconds]);
+    }
+  }
+  const csv = '﻿' + lines.map((l) => l.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), download: 'shaklon-results.csv' });
+  a.click();
+};
+
+// جاء من مسح رمز نتائج مجموعة
+if (location.hash.includes('r=')) {
+  importCode(location.hash);
+  history.replaceState(null, '', location.pathname);
+}
+drawGroups();
+drawResults();
+if (data.id && data.groups.some((g) => names(g).length)) { /* الرمز السابق ما زال صالحًا */ $('make').textContent = 'أظهر رمز الصف'; }
+</script>
+</body>
+</html>

@@ -1,26 +1,19 @@
-// طبقة الواجهة فوق المشهد: فقاعة شكلون، خطوات المحقق، حقيبة الأشكال، لوحة المقارنة، وغيرها.
-import { SHAPES, SHAPE_ORDER, LINES } from './config.js';
+// طبقة الواجهة فوق المشهد: فقاعة شكلون، خطوات المحقق، لوحة الأعداد (توقع أو إجابة)، العدسات الثلاث بعدّاداتها،
+// لوحة المقارنة، سجل المدينة، شريط الوقت، «الدور على فلان»، والنافذة العامة.
+import { ELEMENTS, ELEMENT_ORDER, LINES } from './config.js';
 import { speak, sfx, isMuted, setMuted } from './audio.js';
 
 const $ = (id) => document.getElementById(id);
 const icon = (id) => `<svg><use href="#${id}"/></svg>`;
-
-function chip(shape, { count = null, tag = 'span', cls = '', mark = null } = {}) {
-  const el = document.createElement(tag);
-  el.className = `chip ${cls}`.trim();
-  el.dataset.shape = shape;
-  el.innerHTML = `${icon('s-' + shape)}<span>${SHAPES[shape].ar}</span>`
-    + (count !== null ? `<span class="n">${count}</span>` : '')
-    + (mark ? `<span class="mark ${mark.cls}">${mark.text}</span>` : '');
-  return el;
-}
+/** الأسماء يكتبها المعلم وتصل عبر رابط: لا تُوضع في HTML إلا بعد تنظيفها. */
+export const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 
 export function createHud() {
   const el = {
     hud: $('hud'), bubble: $('bubble'), text: $('bubble-text'), avatar: $('avatar'),
-    toast: $('toast'), hint: $('hint'), title: $('title-chip'),
-    bag: $('bag'), bagLabel: $('bag-label'), bagChips: $('bag-chips'),
-    steps: $('steps'), nums: $('nums'), compare: $('compare'),
+    toast: $('toast'), hint: $('hint'), title: $('title-chip'), timer: $('timer'),
+    predict: $('predict'), lenses: $('lenses'), steps: $('steps'), turn: $('turn'),
+    compare: $('compare'), log: $('log'),
     scan: $('scan'), scanText: $('scan-text'), loading: $('loading'), confetti: $('confetti'),
   };
   let lastLine = null;
@@ -52,14 +45,21 @@ export function createHud() {
     hint(text) { el.hint.hidden = !text; if (text) el.hint.textContent = text; },
     title(text) { el.title.hidden = !text; if (text) el.title.textContent = text; },
     scan(visible, text) { el.scan.hidden = !visible; if (text) el.scanText.textContent = text; },
+    /** شريط الوقت في التقييم: كسر من 1 إلى 0، أو null لإخفائه. */
+    timer(fraction) {
+      el.timer.hidden = fraction === null;
+      if (fraction !== null) el.timer.firstElementChild.style.width = `${fraction * 100}%`;
+    },
 
-    button(name, visible, onClick) {
+    /** زر جانبي أو علوي: إظهار/إخفاء، ومعالج النقر وتسميته اختياريان. */
+    button(name, visible, onClick, label) {
       const b = $('btn-' + name);
       b.hidden = !visible;
       if (onClick) b.onclick = () => { sfx.tick(); onClick(); };
+      if (label) b.querySelector('span').textContent = label;
     },
 
-    // ---- خطوات المحقق ----
+    // ---- خطوات المحقق: أتوقع، أتجوّل، أعدّ، أقارن ----
     steps: {
       onPick: null,
       show(visible) { el.steps.hidden = !visible; },
@@ -72,66 +72,105 @@ export function createHud() {
       pulse(step, on = true) { el.steps.querySelector(`[data-step="${step}"]`).classList.toggle('pulse', on); },
     },
 
-    // ---- حقيبة الأشكال: في «أتوقع» أزرار اختيار، وبعدها عدّاد لما فُصل ----
-    bag: {
-      onToggle: null,
-      hide() { el.bag.hidden = true; },
-      predict(selected) {
-        el.bag.hidden = false;
-        el.bag.classList.add('predict');
-        el.bagLabel.textContent = 'أتوقع أن أجد';
-        el.bagChips.replaceChildren(...SHAPE_ORDER.map((s) => {
-          const c = chip(s, { tag: 'button', cls: selected.has(s) ? 'on' : '' });
-          c.onclick = () => { sfx.tick(); hud.bag.onToggle?.(s); };
-          return c;
-        }));
-      },
-      found(counts, bump = null) {
-        el.bag.hidden = false;
-        el.bag.classList.remove('predict');
-        el.bagLabel.textContent = 'حقيبة الأشكال';
-        el.bagChips.replaceChildren(...SHAPE_ORDER.map((s) =>
-          chip(s, { count: counts[s] || 0, cls: `${counts[s] ? '' : 'off'} ${bump === s ? 'bump' : ''}` })));
+    // ---- «أتوقع»: ثلاثة أعداد يختارها التلميذ ----
+    predict: {
+      onChange: null,
+      show(values) {
+        el.predict.hidden = !values;
+        if (!values) return;
+        el.predict.querySelectorAll('.stepper').forEach((s) => {
+          const v = values[s.dataset.kind];
+          s.querySelector('b').textContent = v === null ? '؟' : v;
+        });
       },
     },
 
-    // ---- أرقام مباني الحيّ الجديد ----
-    nums: {
+    // ---- العدسات الثلاث وعدّاد كل منها ----
+    lenses: {
       onPick: null,
-      show(colors) {
-        el.nums.hidden = !colors;
-        if (!colors) return;
-        el.nums.replaceChildren(...colors.map((c, i) => {
-          const b = document.createElement('button');
-          b.textContent = String(i + 1);
-          b.style.setProperty('--c', c);
-          b.setAttribute('aria-label', `المبنى ${i + 1}`);
-          b.onclick = () => { sfx.tick(); hud.nums.onPick?.(i); };
-          return b;
-        }));
+      show(counts, active, bump) {
+        el.lenses.hidden = !counts;
+        if (!counts) return;
+        el.lenses.querySelectorAll('button').forEach((b) => {
+          const k = b.dataset.lens;
+          const n = b.querySelector('b');
+          n.textContent = counts[k];
+          b.classList.toggle('active', k === active);
+          if (k === bump) { n.classList.remove('bump'); void n.offsetWidth; n.classList.add('bump'); }
+        });
       },
-      set(active) { [...el.nums.children].forEach((b, i) => b.classList.toggle('active', i === active)); },
     },
 
-    // ---- لوحة «أقارن» ----
+    /** «الدور على فلان»: تناوب أعضاء المجموعة على الجهاز. */
+    turn(name) {
+      const changed = !!name && el.turn.dataset.name !== name;
+      el.turn.hidden = !name;
+      if (!name) { el.turn.dataset.name = ''; return; }
+      el.turn.dataset.name = name;
+      el.turn.replaceChildren('الدور على ', Object.assign(document.createElement('b'), { textContent: name }));
+      if (changed) { el.turn.classList.remove('pop'); void el.turn.offsetWidth; el.turn.classList.add('pop'); }
+    },
+
+    /**
+     * نافذة في وسط الشاشة. null تغلقها.
+     * {title, lead, body: عنصر أو نص HTML, actions: [{label, ghost, onClick}], bot: إظهار شكلون}
+     */
+    dialog(opts) {
+      const box = $('dialog');
+      box.hidden = !opts;
+      if (!opts) return;
+      $('dialog-bot').style.display = opts.bot === false ? 'none' : '';
+      $('dialog-title').textContent = opts.title || '';
+      $('dialog-lead').textContent = opts.lead || '';
+      $('dialog-lead').hidden = !opts.lead;
+      const body = $('dialog-body');
+      if (typeof opts.body === 'string') body.innerHTML = opts.body;
+      else body.replaceChildren(...(opts.body ? [opts.body] : []));
+      $('dialog-actions').replaceChildren(...(opts.actions || []).map((a) => {
+        const b = document.createElement('button');
+        b.className = a.ghost ? 'link-btn' : 'big-btn';
+        b.textContent = a.label;
+        b.onclick = () => { sfx.tick(); a.onClick(); };
+        return b;
+      }));
+    },
+
+    /** يخفي كل اللوحات والأزرار الجانبية (عند الانتقال بين فصول المغامرة). */
+    reset() {
+      for (const id of ['predict', 'lenses', 'steps', 'compare', 'log', 'timer', 'turn', 'title-chip', 'hint']) $(id).hidden = true;
+      document.querySelectorAll('.side .pill, #btn-next, #btn-shutter, #btn-log').forEach((b) => (b.hidden = true));
+      hud.dialog(null);
+      hud.steps.onPick = hud.predict.onChange = hud.lenses.onPick = hud.onTeacher = null;
+    },
+
+    // ---- لوحة «أقارن»: ما توقعناه مقابل ما عددناه ----
     compare: {
-      open(predicted, found, onDone) {
-        const foundShapes = SHAPE_ORDER.filter((s) => found[s]);
-        const p = $('cmp-predicted'), f = $('cmp-found');
-        const predictedList = SHAPE_ORDER.filter((s) => predicted.has(s));
-        p.replaceChildren(...(predictedList.length
-          ? predictedList.map((s) => found[s]
-            ? chip(s, { mark: { cls: 'ok', text: '✓' } })
-            : chip(s, { cls: 'miss', mark: { cls: 'no', text: '✕' } }))
-          : [Object.assign(document.createElement('span'), { className: 'empty', textContent: 'لم نتوقع شيئًا' })]));
-        f.replaceChildren(...foundShapes.map((s) => chip(s, {
-          count: found[s], mark: predicted.has(s) ? { cls: 'ok', text: '✓' } : { cls: 'new', text: '!' },
-        })));
+      open(predicted, counted, onDone) {
+        $('cmp-rows').innerHTML = ELEMENT_ORDER.map((k) => {
+          const p = predicted[k];
+          const ok = p === counted[k];
+          return `<tr><th><i class="ico ${k}"></i>${ELEMENTS[k].ar}</th><td>${p === null ? '؟' : p}</td><td class="strong">${counted[k]}</td>`
+            + `<td>${p === null ? '' : `<span class="mark ${ok ? 'ok' : 'no'}">${ok ? '✓' : '✕'}</span>`}</td></tr>`;
+        }).join('');
         el.compare.hidden = false;
         $('btn-done').onclick = () => onDone();
       },
       close() { el.compare.hidden = true; },
       get isOpen() { return !el.compare.hidden; },
+    },
+
+    // ---- سجل المدينة. mine: أعداد شيء حقيقي لمقارنتها بالمباني (عدسة المحقق) ----
+    log: {
+      open(rows, mine = null) {
+        const row = (name, c, cls = '') => `<tr class="${cls}"><th>${esc(name)}</th><td>${c[0]}</td><td>${c[1]}</td><td>${c[2]}</td></tr>`;
+        const same = (c) => mine && c[0] === mine[0] && c[1] === mine[1] && c[2] === mine[2];
+        let html = mine ? row('ما عددناه', mine, 'mine') : '';
+        html += rows.map((r) => row(r.name, r.counts, same(r.counts) ? 'match' : '')).join('');
+        if (!rows.length && !mine) html = '<tr><td colspan="4" class="empty">لم نُضئ أي مبنى بعد</td></tr>';
+        $('log-rows').innerHTML = html;
+        el.log.hidden = false;
+      },
+      close() { el.log.hidden = true; },
     },
 
     /** ضغطة مطوّلة على صورة شكلون تفتح وضع المعلم؛ نقرة عادية تعيد الرسالة. */
@@ -172,6 +211,13 @@ export function createHud() {
   el.steps.querySelectorAll('button').forEach((b) => {
     b.onclick = () => { sfx.tick(); hud.steps.onPick?.(b.dataset.step); };
   });
+  el.lenses.querySelectorAll('button').forEach((b) => {
+    b.onclick = () => { sfx.tick(); hud.lenses.onPick?.(b.dataset.lens); };
+  });
+  el.predict.querySelectorAll('.stepper button').forEach((b) => {
+    b.onclick = () => { sfx.tick(); hud.predict.onChange?.(b.parentElement.dataset.kind, Number(b.dataset.d)); };
+  });
+  $('btn-log-close').onclick = () => { sfx.tick(); hud.log.close(); };
 
   // الصوت
   const soundBtn = $('btn-sound');
