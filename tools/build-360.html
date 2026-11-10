@@ -1,0 +1,544 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>تجهيز صورة 360</title>
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  html, body { overflow: auto; height: auto; background: #eef2ff; }
+  body { padding: 24px; user-select: text; }
+  canvas { max-width: 100%; border-radius: 12px; box-shadow: 0 4px 14px rgba(0,0,0,.2); margin: 8px 0; display: block; }
+  #status { font-size: 22px; font-weight: 800; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "../vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<h1>تجهيز صورة 360: «مدينة شكلون 360»</h1>
+<p>أداة تطوير: تبني ساحة معلوماتية من مجسمات الأداة نفسها (محطات الوجه والحرف والرأس)، وتلتقطها صورة 360
+(equirectangular) وتحفظها في <code>assets/360/</code>. تعمل فقط مع الخادم المحلي <code>tools/serve.mjs</code>.
+الأعداد تُقرأ من <code>ANSWERS</code> في <code>js/config.js</code>.</p>
+<p id="status">جارٍ البناء...</p>
+<div id="out"></div>
+
+<script type="module">
+import * as THREE from 'three';
+import { Building } from '../js/buildings.js';
+import { createShaklon } from '../js/shaklon.js';
+import { ANSWERS, ELEMENTS } from '../js/config.js';
+
+const params = new URLSearchParams(location.search);
+const status = document.getElementById('status');
+const out = document.getElementById('out');
+
+const OUT_W = Number(params.get('w')) || 8192;      // عرض الصورة النهائية، وارتفاعها نصفه
+const OUT_H = OUT_W / 2;
+const EYE = 3.6;                                    // ارتفاع عين المشاهد فوق الساحة
+const FONT = '"Baloo Bhaijaan 2", sans-serif';
+const INK = '#141b45';
+const LIGHT = 0xe6ebff;                             // لون مجسمات الشرح (محايد لتظهر ألوان العناصر)
+const [FACES, EDGES, VERTS] = ANSWERS.house;        // المكعب: مثال الشرح
+// المكعب الزجاجي لا يُنظر إليه على امتداد قطره، وإلا انطبق رأسه القريب على البعيد فظهرت 7 رؤوس لا 8.
+const GLASS_YAW = 0.38, GLASS_TILT = 0.3;
+
+// المحطات بالترتيب. الزاوية 0 أمام المشاهد وتزيد نحو يساره (اتجاه القراءة بالعربية).
+const STATIONS = [
+  { deg: 0,   name: 'البداية', color: '#4f6fe3' },
+  { deg: 60,  name: 'الوجه',   color: ELEMENTS.faces.css },
+  { deg: 120, name: 'الحرف',   color: ELEMENTS.edges.css },
+  { deg: 180, name: 'الرأس',   color: ELEMENTS.vertices.css },
+  { deg: 240, name: 'انتبه',   color: '#8e52c7' },
+  { deg: 300, name: 'مهمتك',   color: '#ef8a2b' },
+];
+
+const rad = (d) => (d * Math.PI) / 180;
+function rng(seed) {
+  let s = seed >>> 0;
+  return () => { s += 0x6D2B79F5; let t = s; t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+
+// ---------- الرسم على لوحات (نصوص اللافتات) ----------
+function makeCanvas(w, h, draw) {
+  const c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  const g = c.getContext('2d');
+  g.direction = 'rtl'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.lineJoin = 'round'; g.lineCap = 'round';
+  draw(g, w, h);
+  return c;
+}
+function rr(g, x, y, w, h, r) {
+  g.beginPath();
+  g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r);
+  g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath();
+}
+/** يصغّر الخط حتى يدخل النص في العرض المتاح. */
+function fit(g, text, weight, size, max) {
+  for (; size > 40; size -= 4) {
+    g.font = `${weight} ${size}px ${FONT}`;
+    if (g.measureText(text).width <= max) break;
+  }
+  return size;
+}
+const isLight = (css) => css === ELEMENTS.faces.css;
+
+/** لافتة محطة: شريط عنوان ملوّن فيه رقم المحطة وسهم «التالي»، ثم سطر التعريف، ثم مثال، ثم سطر صغير. */
+function signCanvas({ color, badge, title, def, chip, small, foot }) {
+  return makeCanvas(2600, 1200, (g, w, h) => {
+    const onBar = isLight(color) ? INK : '#ffffff';
+    g.save();
+    rr(g, 20, 20, w - 40, h - 40, 96); g.clip();
+    g.fillStyle = '#ffffff'; g.fillRect(0, 0, w, h);
+    g.fillStyle = color; g.fillRect(0, 0, w, 330);
+    g.restore();
+    g.lineWidth = 24; g.strokeStyle = INK; rr(g, 20, 20, w - 40, h - 40, 96); g.stroke();
+    g.lineWidth = 14; g.beginPath(); g.moveTo(32, 330); g.lineTo(w - 32, 330); g.stroke();
+
+    // رقم المحطة يمينًا (بداية السطر بالعربية)
+    g.beginPath(); g.arc(w - 215, 178, 112, 0, 7); g.fillStyle = '#ffffff'; g.fill();
+    g.lineWidth = 14; g.strokeStyle = INK; g.stroke();
+    if (typeof badge === 'string') {
+      g.fillStyle = INK; g.font = `800 170px ${FONT}`; g.fillText(badge, w - 215, 186);
+    } else if (badge) {
+      g.drawImage(badge, w - 215 - 86, 178 - 86, 172, 172);
+    }
+    // سهم «المحطة التالية» يسارًا
+    const ax = 215, ay = 178, ar = 112;
+    g.beginPath(); g.arc(ax, ay, ar, 0, 7); g.fillStyle = '#ffffff'; g.fill();
+    g.lineWidth = 14; g.strokeStyle = INK; g.stroke();
+    g.lineWidth = 26; g.beginPath();
+    g.moveTo(ax + 52, ay); g.lineTo(ax - 52, ay);
+    g.moveTo(ax - 8, ay - 46); g.lineTo(ax - 54, ay); g.lineTo(ax - 8, ay + 46);
+    g.stroke();
+
+    g.fillStyle = onBar;
+    fit(g, title, 800, 216, w - 760); g.fillText(title, w / 2, 186);
+
+    g.fillStyle = INK;
+    fit(g, def, 800, 168, w - 220); g.fillText(def, w / 2, 512);
+
+    if (chip) {
+      const size = fit(g, chip, 800, 140, w - 420);
+      const tw = g.measureText(chip).width + 150;
+      rr(g, (w - tw) / 2, 660, tw, 200, 100);
+      g.fillStyle = color; g.globalAlpha = 0.24; g.fill(); g.globalAlpha = 1;
+      g.lineWidth = 10; g.strokeStyle = color; g.stroke();
+      g.fillStyle = INK; g.font = `800 ${size}px ${FONT}`; g.fillText(chip, w / 2, 766);
+    }
+    if (small) {
+      g.fillStyle = '#39447e';
+      fit(g, small, 700, 112, w - 240); g.fillText(small, w / 2, 1010);
+    }
+    if (foot) foot(g, w, h);
+  });
+}
+
+function tagCanvas(text, bg, fg = INK) {
+  return makeCanvas(900, 230, (g, w, h) => {
+    rr(g, 14, 14, w - 28, h - 28, 100); g.fillStyle = bg; g.fill();
+    g.lineWidth = 16; g.strokeStyle = INK; g.stroke();
+    g.fillStyle = fg; fit(g, text, 800, 120, w - 120); g.fillText(text, w / 2, h / 2 + 8);
+  });
+}
+function questionCanvas() {
+  return makeCanvas(256, 256, (g) => {
+    g.font = `800 230px ${FONT}`;
+    g.lineWidth = 26; g.strokeStyle = INK; g.strokeText('؟', 128, 140);
+    g.fillStyle = '#ffe27a'; g.fillText('؟', 128, 140);
+  });
+}
+function glowCanvas(rgb) {
+  return makeCanvas(256, 256, (g) => {
+    const grad = g.createRadialGradient(128, 128, 6, 128, 128, 128);
+    grad.addColorStop(0, `rgba(${rgb},0.85)`); grad.addColorStop(0.5, `rgba(${rgb},0.25)`); grad.addColorStop(1, `rgba(${rgb},0)`);
+    g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+  });
+}
+/** بوصلة المنصة تحت قدمي المشاهد: كل محطة في اتجاهها الحقيقي. */
+function compassCanvas() {
+  return makeCanvas(1024, 1024, (g, w) => {
+    const c = w / 2;
+    g.beginPath(); g.arc(c, c, 500, 0, 7); g.fillStyle = '#1c2566'; g.fill();
+    g.lineWidth = 18; g.strokeStyle = '#ffffff'; g.stroke();
+    g.beginPath(); g.arc(c, c, 170, 0, 7); g.fillStyle = '#ffffff'; g.fill();
+    g.lineWidth = 12; g.strokeStyle = INK; g.stroke();
+    g.fillStyle = INK; g.font = `800 84px ${FONT}`; g.fillText('أنت هنا', c, c + 6);
+    STATIONS.forEach((s, i) => {
+      g.save(); g.translate(c, c); g.rotate(-rad(s.deg));
+      g.beginPath(); g.moveTo(0, -196); g.lineTo(0, -246); g.lineWidth = 12; g.strokeStyle = s.color; g.stroke();
+      rr(g, -150, -452, 300, 190, 60); g.fillStyle = s.color; g.fill();
+      g.lineWidth = 10; g.strokeStyle = INK; g.stroke();
+      g.fillStyle = isLight(s.color) ? INK : '#ffffff';
+      g.font = `800 66px ${FONT}`; g.fillText(s.name, 0, -396);
+      g.font = `800 78px ${FONT}`; g.fillText(i === 0 ? '★' : String(i), 0, -312);
+      g.restore();
+    });
+  });
+}
+
+// ---------- المشهد ----------
+const scene = new THREE.Scene();
+scene.fog = new THREE.Fog(0x5a4bb8, 24, 130);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+const MAX_ANISO = renderer.capabilities.getMaxAnisotropy();
+
+function tex(canvas) {
+  const t = new THREE.CanvasTexture(canvas);
+  t.colorSpace = THREE.SRGBColorSpace;
+  t.anisotropy = MAX_ANISO;
+  return t;
+}
+/** لوحة مسطحة من رسم، عرضها width بوحدات المشهد. */
+function board(canvas, width, extra = {}) {
+  return new THREE.Mesh(
+    new THREE.PlaneGeometry(width, (width * canvas.height) / canvas.width),
+    new THREE.MeshBasicMaterial({ map: tex(canvas), transparent: true, ...extra }),
+  );
+}
+/** مجموعة عند الزاوية deg والبعد r، ومحورها +Z يتجه إلى المشاهد (فلا تنعكس النصوص). */
+function spot(deg, r, y = 0) {
+  const g = new THREE.Group();
+  const t = rad(deg);
+  g.position.set(-Math.sin(t) * r, y, -Math.cos(t) * r);
+  g.rotation.y = t;
+  scene.add(g);
+  return g;
+}
+function link(parent, a, b, color = 0xffffff, radius = 0.03) {
+  const m = new THREE.Mesh(
+    new THREE.CylinderGeometry(radius, radius, a.distanceTo(b), 8),
+    new THREE.MeshBasicMaterial({ color }),
+  );
+  m.position.copy(a).add(b).multiplyScalar(0.5);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  parent.add(m);
+}
+// الـSprite يواجه كل كاميرا على حدة، فيُحدث قطعًا عند حدود أوجه المكعب الملتقط: نخفيه.
+function solid(key, opts) {
+  const b = new Building(key, opts);
+  b.group.traverse((o) => { if (o.isSprite) o.visible = false; });
+  return b;
+}
+function lightAll(b, kind) {
+  for (const el of b.els[kind]) { el.lit = true; b.paint(el); }
+}
+function glass(b) {
+  b.core.visible = false;
+  for (const el of b.els.faces) {
+    Object.assign(el.mesh.material, { transparent: true, opacity: 0.2, depthWrite: false });
+    el.mesh.material.color.setHex(0xc4ceff);
+  }
+}
+
+function buildEnvironment() {
+  // السماء: غسق فوق مدينة انطفأت أنوارها
+  const sky = new THREE.Mesh(
+    new THREE.SphereGeometry(380, 48, 24),
+    new THREE.ShaderMaterial({
+      side: THREE.BackSide, depthWrite: false, fog: false,
+      uniforms: {
+        top: { value: new THREE.Color('#0b1036') }, mid: { value: new THREE.Color('#232a78') },
+        hor: { value: new THREE.Color('#6b58c9') }, warm: { value: new THREE.Color('#ff8f6b') },
+      },
+      vertexShader: 'varying vec3 vDir; void main(){ vDir = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+      fragmentShader: `
+        uniform vec3 top; uniform vec3 mid; uniform vec3 hor; uniform vec3 warm; varying vec3 vDir;
+        void main(){
+          float h = max(normalize(vDir).y, 0.0);
+          vec3 c = mix(mid, top, smoothstep(0.08, 0.75, h));
+          c = mix(hor, c, smoothstep(0.0, 0.24, h));
+          c += warm * 0.3 * exp(-h * 14.0);
+          gl_FragColor = vec4(c, 1.0);
+        }`,
+    }),
+  );
+  scene.add(sky);
+
+  const rand = rng(11);
+  const stars = [];
+  for (let i = 0; i < 1700; i++) {
+    const y = 0.06 + rand() * 0.94, a = rand() * Math.PI * 2, r = Math.sqrt(1 - y * y);
+    stars.push(Math.cos(a) * r * 350, y * 350, Math.sin(a) * r * 350);
+  }
+  const starGeo = new THREE.BufferGeometry();
+  starGeo.setAttribute('position', new THREE.Float32BufferAttribute(stars, 3));
+  scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0xffffff, size: 5, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 })));
+
+  // القمر في الفراغ بين البداية والمحطة 1
+  const moon = spot(30, 250, 215);
+  moon.lookAt(0, EYE, 0);
+  const halo = board(glowCanvas('255,240,190'), 110, { blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+  const disc = new THREE.Mesh(new THREE.CircleGeometry(13, 48), new THREE.MeshBasicMaterial({ color: 0xfff3c4, fog: false }));
+  disc.position.z = 0.5;
+  moon.add(halo, disc);
+
+  scene.add(new THREE.HemisphereLight(0xdfe6ff, 0x2a2f7a, 1.7));
+  const lamp = new THREE.PointLight(0xffffff, 2.4, 0, 0);       // مصباح فوق المشاهد: كل المحطات مضاءة من جهته
+  lamp.position.set(0, EYE + 3, 0);
+  scene.add(lamp);
+
+  const flat = (geo, color, y, mat = THREE.MeshStandardMaterial) => {
+    const m = new THREE.Mesh(geo, new mat({ color, roughness: 1 }));
+    m.rotation.x = -Math.PI / 2; m.position.y = y; scene.add(m); return m;
+  };
+  flat(new THREE.CircleGeometry(400, 72), 0x1a2058, 0);
+  flat(new THREE.CircleGeometry(12.5, 96), 0x252d74, 0.01);
+  flat(new THREE.RingGeometry(12.2, 12.5, 96), 0x4a5590, 0.02);
+  for (let i = 0; i < 64; i++) {                                 // خط الطريق المتقطع حول الساحة
+    const dash = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.02, 0.13), new THREE.MeshBasicMaterial({ color: 0xffffff }));
+    const a = (i / 64) * Math.PI * 2;
+    dash.position.set(Math.sin(a) * 10.9, 0.03, Math.cos(a) * 10.9);
+    dash.rotation.y = a;
+    scene.add(dash);
+  }
+
+  // مدينة بعيدة مطفأة حول الساحة: مجسمات بسيطة في الضباب
+  const far = [
+    () => new THREE.BoxGeometry(1, 1, 1), () => new THREE.CylinderGeometry(0.5, 0.5, 1, 28),
+    () => new THREE.ConeGeometry(0.62, 1, 4), () => new THREE.BoxGeometry(1, 1, 1),
+  ];
+  for (let i = 0; i < 110; i++) {
+    const a = rand() * Math.PI * 2, r = 24 + rand() * 62, h = 4 + rand() * 15, w = 3 + rand() * 5;
+    const m = new THREE.Mesh(far[Math.floor(rand() * far.length)](),
+      new THREE.MeshStandardMaterial({ color: new THREE.Color(0x39446e).lerp(new THREE.Color(0x232b5c), rand()), roughness: 1 }));
+    m.scale.set(w, h, w * (0.7 + rand() * 0.6));
+    m.position.set(Math.sin(a) * r, h / 2, Math.cos(a) * r);
+    m.rotation.y = rand() * Math.PI;
+    scene.add(m);
+  }
+
+  // منصة المشاهد وبوصلتها
+  const deck = board(compassCanvas(), 3);
+  deck.rotation.x = -Math.PI / 2; deck.position.y = EYE - 1.6;
+  scene.add(deck);
+}
+
+/** قاعدة المحطة على الأرض بلون المحطة. */
+function pad(st, r = 2.3) {
+  const color = new THREE.Color(st.color);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(r, r * 1.06, 0.14, 64), new THREE.MeshStandardMaterial({ color: 0x141b45, roughness: 0.8 }));
+  base.position.y = 0.07;
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(r * 0.9, 0.07, 10, 72), new THREE.MeshBasicMaterial({ color }));
+  ring.rotation.x = Math.PI / 2; ring.position.y = 0.16;
+  const glow = new THREE.Mesh(new THREE.CircleGeometry(r * 0.86, 48), new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.3 }));
+  glow.rotation.x = -Math.PI / 2; glow.position.y = 0.15;
+  st.group.add(base, ring, glow);
+}
+/** لافتة المحطة عند مستوى النظر، مائلة قليلًا نحو المشاهد. */
+function sign(st, opts, r = 8.6, bottom = 3.7, width = 7.4) {
+  const canvas = signCanvas({ color: st.color, ...opts });
+  const b = board(canvas, width);
+  const height = (width * canvas.height) / canvas.width;
+  const g = spot(st.deg, r, bottom + height / 2);
+  g.rotation.order = 'YXZ';
+  g.rotation.x = Math.atan2(bottom + height / 2 - EYE, r);
+  g.add(b);
+}
+/** مجسم الشرح: يطفو مائلًا نحو المشاهد (كما في «ارفع المبنى») ليظهر أعلاه وجانباه. */
+function hologram(st, b, scale = 6.4, y = 1.95, yaw = 0.62, tilt = 0.4) {
+  const holder = new THREE.Group();
+  holder.position.y = y;
+  holder.rotation.x = tilt;
+  holder.scale.setScalar(scale);
+  b.group.rotation.y = yaw;
+  holder.add(b.group);
+  st.group.add(holder);
+  return holder;
+}
+
+async function buildStations() {
+  const robot = new Image(); robot.src = '../assets/icon.svg'; await robot.decode();
+  for (const st of STATIONS) st.group = spot(st.deg, 6.4);
+  const [home, sFaces, sEdges, sVerts, sNote, sGo] = STATIONS;
+
+  // البداية: شكلون يرحّب، ومفتاح الألوان الثلاثة
+  sign(home, {
+    badge: robot, title: 'مدينة شكلون 360', def: 'أهلًا أيها المحقق!', chip: 'انظر حولك واتبع السهم',
+    foot(g, w) {
+      const items = [['وجه', ELEMENTS.faces.css], ['حرف', ELEMENTS.edges.css], ['رأس', ELEMENTS.vertices.css]];
+      g.font = `800 112px ${FONT}`;
+      items.forEach(([label, color], i) => {
+        const x = w / 2 + (1 - i) * 560;                       // من اليمين إلى اليسار
+        g.beginPath(); g.arc(x + 150, 1004, 52, 0, 7); g.fillStyle = color; g.fill();
+        g.lineWidth = 12; g.strokeStyle = INK; g.stroke();
+        g.fillStyle = INK; g.fillText(label, x - 20, 1012);
+      });
+    },
+  });
+  const shaklon = createShaklon();
+  shaklon.wave(100); shaklon.update(0.5, null);
+  const guide = spot(0, 4.3, 1.25);
+  guide.rotation.order = 'YXZ'; guide.rotation.x = -0.22;
+  shaklon.group.scale.setScalar(1.9);
+  guide.add(shaklon.group);
+  const beam = new THREE.Mesh(new THREE.CircleGeometry(0.9, 40), new THREE.MeshBasicMaterial({ color: 0x7fe3ff, transparent: true, opacity: 0.35 }));
+  beam.rotation.x = -Math.PI / 2;
+  spot(0, 4.3, 0.03).add(beam);
+
+  // 1) الوجه: مكعب مصمت أوجهه صفراء (يُرى منها ثلاثة فقط)
+  pad(sFaces);
+  const cubeF = solid('house', { color: LIGHT });
+  lightAll(cubeF, 'faces');
+  for (const el of cubeF.els.faces) el.mesh.material.emissiveIntensity = 0.22;
+  for (const el of cubeF.els.edges) { el.mesh.material.color.set(INK); el.mesh.material.opacity = 1; el.mesh.scale.set(2.2, 1, 2.2); }
+  hologram(sFaces, cubeF);
+  sign(sFaces, { badge: '1', title: 'الوجه', def: 'الوجه سطح مستوٍ', chip: `للمكعب ${FACES} أوجه`, small: '3 تراها، و3 مختفية خلفه وتحته' });
+
+  // 2) الحرف: مكعب زجاجي لتُرى الأحرف كلها زرقاء
+  pad(sEdges);
+  const cubeE = solid('house', { color: LIGHT });
+  glass(cubeE); lightAll(cubeE, 'edges');
+  hologram(sEdges, cubeE, 6.4, 1.95, GLASS_YAW, GLASS_TILT);
+  sign(sEdges, { badge: '2', title: 'الحرف', def: 'الحرف التقاء وجهين', chip: `للمكعب ${EDGES} حرفًا`, small: `عُدّ الخطوط الزرقاء: هل تجدها ${EDGES}؟` });
+
+  // 3) الرأس: مكعب زجاجي لتُرى الرؤوس كلها حمراء
+  pad(sVerts);
+  const cubeV = solid('house', { color: LIGHT });
+  glass(cubeV); lightAll(cubeV, 'vertices');
+  for (const el of cubeV.els.edges) el.mesh.material.opacity = 0.95;
+  for (const el of cubeV.els.vertices) el.mesh.scale.setScalar(1.25);
+  hologram(sVerts, cubeV, 6.4, 1.95, GLASS_YAW, GLASS_TILT);
+  sign(sVerts, { badge: '3', title: 'الرأس', def: 'الرأس نقطة التقاء ثلاثة أوجه أو أكثر', chip: `للمكعب ${VERTS} رؤوس`, small: `عُدّ الكرات الحمراء: هل تجدها ${VERTS}؟` });
+
+  // 4) انتبه: السطح المنحني ليس وجهًا، والحافة المنحنية ليست حرفًا
+  pad(sNote);
+  const cyl = solid('tower');
+  lightAll(cyl, 'faces');
+  for (const el of cyl.els.faces) el.mesh.material.emissiveIntensity = 0.22;
+  const holder = hologram(sNote, cyl, 5.6, 1.95, 0, 0.5);
+  sign(sNote, { badge: '4', title: 'انتبه!', def: 'السطح المنحني ليس وجهًا', chip: 'والحافة المنحنية ليست حرفًا', small: 'الوجه دائمًا سطح مستوٍ' });
+  scene.updateMatrixWorld(true);
+  const local = (v) => sNote.group.worldToLocal(v);
+  const top = local(cyl.els.faces[0].mesh.getWorldPosition(new THREE.Vector3()));
+  const side = local(holder.localToWorld(new THREE.Vector3(-0.1, -0.04, 0.1)));
+  const tagFace = board(tagCanvas('وجه', ELEMENTS.faces.css), 1.9);
+  tagFace.position.set(2.5, top.y + 0.35, 0.6);
+  const tagSide = board(tagCanvas('سطح منحنٍ', '#ffffff'), 2.1);
+  tagSide.position.set(-2.55, side.y - 0.1, 0.6);
+  sNote.group.add(tagFace, tagSide);
+  link(sNote.group, new THREE.Vector3(1.6, top.y + 0.33, 0.6), top);
+  link(sNote.group, new THREE.Vector3(-1.55, side.y - 0.1, 0.6), side);
+
+  // 5) مهمتك: مبانٍ مطفأة تنتظر العدّ في المغامرة (بلا أعداد: لا نكشف إجابات التقييم)
+  const q = questionCanvas();
+  const plots = [['pyramid', 2.7, 0.9, 0.5], ['block', 0.95, -1.5, 0.35], ['kiosk', -0.95, 0.9, 0], ['tank', -2.7, -1.5, 0]];
+  for (const [key, x, z, yaw] of plots) {
+    const b = solid(key, { mode: 'dark' });
+    const S = 5.2;
+    b.group.scale.setScalar(S);
+    b.group.position.set(x, -b.bottom * S + 0.02, z);
+    b.group.rotation.y = yaw;
+    const mark = board(q, 0.95);
+    mark.position.set(x, -b.bottom * S * 2 + 0.75, z);
+    sGo.group.add(b.group, mark);
+  }
+  sign(sGo, { badge: '5', title: 'مهمتك', def: 'انطفأت أنوار المدينة!', chip: 'عُدّ أوجه كل مبنى وأحرفه ورؤوسه', small: 'افتح مغامرة الواقع المعزز لتعود الأنوار' });
+}
+
+// ---------- الالتقاط: مكعب من ست جهات ثم إسقاط equirectangular ----------
+function capture() {
+  const N = Math.min(Number(params.get('n')) || 4096, renderer.capabilities.maxCubemapSize);
+  const rt = new THREE.WebGLCubeRenderTarget(N, {
+    generateMipmaps: true, minFilter: THREE.LinearMipmapLinearFilter, magFilter: THREE.LinearFilter,
+    colorSpace: THREE.SRGBColorSpace,
+  });
+  const cube = new THREE.CubeCamera(0.05, 900, rt);
+  cube.position.set(0, EYE, 0);
+  scene.add(cube);
+  cube.update(renderer, scene);
+
+  const mat = new THREE.ShaderMaterial({
+    depthTest: false, depthWrite: false,
+    uniforms: { map: { value: rt.texture }, rect: { value: new THREE.Vector4() }, flip: { value: Number(params.get('flip')) || 1 } },
+    vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
+    fragmentShader: `
+      uniform samplerCube map; uniform vec4 rect; uniform float flip; varying vec2 vUv;
+      void main(){
+        vec2 uv = rect.xy + vUv * rect.zw;
+        float lon = (uv.x - 0.5) * 6.283185307179586;
+        float lat = (uv.y - 0.5) * 3.141592653589793;
+        vec3 dir = vec3(cos(lat) * sin(lon), sin(lat), -cos(lat) * cos(lon));
+        gl_FragColor = vec4(textureCube(map, vec3(flip * dir.x, dir.yz)).rgb, 1.0);
+        gl_FragColor = linearToOutputTexel(gl_FragColor);
+      }`,
+  });
+  const quadScene = new THREE.Scene();
+  quadScene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), mat));
+  const quadCam = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+  // نرسم الصورة قطعًا حتى لا نتجاوز حدود لوحة WebGL
+  const T = Math.min(2048, OUT_H);
+  const pano = document.createElement('canvas');
+  pano.width = OUT_W; pano.height = OUT_H;
+  const g = pano.getContext('2d');
+  renderer.setRenderTarget(null);
+  renderer.setSize(T, T, false);
+  for (let ty = 0; ty < OUT_H / T; ty++) {
+    for (let tx = 0; tx < OUT_W / T; tx++) {
+      mat.uniforms.rect.value.set((tx * T) / OUT_W, 1 - ((ty + 1) * T) / OUT_H, T / OUT_W, T / OUT_H);
+      renderer.render(quadScene, quadCam);
+      g.drawImage(renderer.domElement, tx * T, ty * T);
+    }
+  }
+  rt.dispose();
+  return { pano, N };
+}
+
+/** يضيف وسم GPano (XMP) ليتعرّف العارضون على الصورة كصورة 360. */
+async function withPanoTag(blob, w, h) {
+  const xmp = '<?xpacket begin="﻿" id="W5M0MpCehiHzreSzNTczkc9d"?><x:xmpmeta xmlns:x="adobe:ns:meta/">'
+    + '<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"><rdf:Description rdf:about="" '
+    + 'xmlns:GPano="http://ns.google.com/photos/1.0/panorama/" GPano:UsePanoramaViewer="True" '
+    + 'GPano:ProjectionType="equirectangular" '
+    + `GPano:FullPanoWidthPixels="${w}" GPano:FullPanoHeightPixels="${h}" `
+    + `GPano:CroppedAreaImageWidthPixels="${w}" GPano:CroppedAreaImageHeightPixels="${h}" `
+    + 'GPano:CroppedAreaLeftPixels="0" GPano:CroppedAreaTopPixels="0"/></rdf:RDF></x:xmpmeta><?xpacket end="w"?>';
+  const enc = new TextEncoder();
+  const head = enc.encode('http://ns.adobe.com/xap/1.0/\0'), body = enc.encode(xmp);
+  const len = 2 + head.length + body.length;
+  const seg = new Uint8Array(2 + len);
+  seg.set([0xff, 0xe1, len >> 8, len & 255]); seg.set(head, 4); seg.set(body, 4 + head.length);
+  const src = new Uint8Array(await blob.arrayBuffer());
+  let pos = 2;                                                  // بعد SOI، وبعد JFIF إن وُجد
+  if (src[2] === 0xff && src[3] === 0xe0) pos = 4 + ((src[4] << 8) | src[5]);
+  return new Blob([src.slice(0, pos), seg, src.slice(pos)], { type: 'image/jpeg' });
+}
+
+const toJpeg = (canvas, q) => new Promise((r) => canvas.toBlob(r, 'image/jpeg', q));
+async function save(name, body) {
+  const res = await fetch(`/__save?dir=360&name=${name}`, { method: 'POST', body });
+  if (!res.ok) throw new Error('save failed: ' + name);
+}
+
+async function main() {
+  for (const w of [700, 800]) await document.fonts.load(`${w} 100px "Baloo Bhaijaan 2"`, 'مدينة شكلون 360 ؟ ٍ ً');
+  buildEnvironment();
+  await buildStations();
+  status.textContent = 'جارٍ الالتقاط...';
+  await new Promise((r) => setTimeout(r, 50));
+  const { pano, N } = capture();
+
+  const small = document.createElement('canvas');
+  small.width = 2048; small.height = 1024;
+  small.getContext('2d').drawImage(pano, 0, 0, 2048, 1024);
+  out.appendChild(small);
+  window.__pano = { pano, small, scene, renderer };
+
+  let note = 'لم تُحفظ (save=0)';
+  if (params.get('save') !== '0') {
+    const full = await withPanoTag(await toJpeg(pano, 0.92), OUT_W, OUT_H);
+    await save('shaklon-360.jpg', full);
+    await save('shaklon-360-preview.jpg', await toJpeg(small, 0.86));
+    note = `حُفظت في assets/360/ (${(full.size / 1048576).toFixed(1)} MB)`;
+  }
+  status.textContent = `تمّ: ${OUT_W}×${OUT_H} من مكعب ${N} — ${note}`;
+  document.title = 'DONE';
+}
+main().catch((e) => { status.textContent = 'خطأ: ' + e.message; document.title = 'ERROR'; console.error(e); });
+</script>
+</body>
+</html>

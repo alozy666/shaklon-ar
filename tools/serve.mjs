@@ -16,8 +16,12 @@ const TYPES = {
   '.mp3': 'audio/mpeg', '.mind': 'application/octet-stream', '.md': 'text/plain; charset=utf-8',
 };
 
-// أدوات tools/ تحفظ مخرجاتها (صور البطاقات وملف التتبّع) عبر هذا المسار، داخل assets/targets فقط.
-const SAVE_DIR = path.join(root, 'assets', 'targets');
+// أدوات tools/ تحفظ مخرجاتها عبر هذا المسار، في مجلدين فقط:
+// assets/targets (السجادة وملف التتبّع) و assets/360 (صورة 360).
+const SAVE_DIRS = {
+  targets: path.join(root, 'assets', 'targets'),
+  360: path.join(root, 'assets', '360'),
+};
 
 function send(res, code, body, type = 'text/plain; charset=utf-8') {
   res.writeHead(code, { 'Content-Type': type, 'Cache-Control': 'no-store' });
@@ -29,12 +33,13 @@ http.createServer((req, res) => {
 
   if (req.method === 'POST' && url.pathname === '/__save') {
     const name = path.basename(url.searchParams.get('name') || '');
-    if (!/^[\w.-]+\.(png|mind)$/.test(name)) return send(res, 400, 'bad name');
+    const dir = SAVE_DIRS[url.searchParams.get('dir') || 'targets'];
+    if (!dir || !/^[\w.-]+\.(png|mind|jpg)$/.test(name)) return send(res, 400, 'bad name');
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
     req.on('end', () => {
-      fs.mkdirSync(SAVE_DIR, { recursive: true });
-      fs.writeFileSync(path.join(SAVE_DIR, name), Buffer.concat(chunks));
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, name), Buffer.concat(chunks));
       send(res, 200, 'saved ' + name);
     });
     return;

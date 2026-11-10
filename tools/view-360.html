@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>معاينة صورة 360</title>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1036; }
+  canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+  #tip { position: fixed; inset: auto 0 12px 0; text-align: center; color: #fff; font: 700 16px "Segoe UI", Tahoma, sans-serif; opacity: .8; pointer-events: none; }
+</style>
+<script type="importmap">
+{ "imports": { "three": "../vendor/three.module.min.js" } }
+</script>
+</head>
+<body>
+<div id="tip">أداة تطوير: معاينة assets/360/shaklon-360.jpg قبل رفعها. اسحب لتنظر حولك، والعجلة للتقريب.</div>
+<script type="module">
+// عارض مستقل عن المولّد: كرة عليها الصورة بالإسقاط القياسي (وسط الصورة = الأمام)، كما يعرضها أي موقع 360.
+// للفحص الآلي: ?yaw=60&pitch=-10&fov=75 (yaw موجب = التفات إلى اليسار).
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const view = { yaw: Number(params.get('yaw')) || 0, pitch: Number(params.get('pitch')) || 0, fov: Number(params.get('fov')) || 75 };
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+document.body.prepend(renderer.domElement);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(view.fov, 1, 0.1, 100);
+camera.rotation.order = 'YXZ';
+
+const texture = await new THREE.TextureLoader().loadAsync(`../assets/360/${params.get('img') || 'shaklon-360.jpg'}?t=${Date.now()}`);
+texture.colorSpace = THREE.SRGBColorSpace;
+texture.anisotropy = renderer.capabilities.getMaxAnisotropy();
+const geo = new THREE.SphereGeometry(50, 96, 48);
+geo.scale(-1, 1, 1);
+scene.add(new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ map: texture })));
+
+function draw() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h; camera.fov = view.fov; camera.updateProjectionMatrix();
+  camera.rotation.y = Math.PI / 2 + (view.yaw * Math.PI) / 180;      // وسط الصورة عند −X على الكرة
+  camera.rotation.x = (view.pitch * Math.PI) / 180;
+  renderer.render(scene, camera);
+}
+let last = null;
+const el = renderer.domElement;
+el.addEventListener('pointerdown', (e) => { last = [e.clientX, e.clientY]; el.setPointerCapture(e.pointerId); });
+el.addEventListener('pointerup', () => { last = null; });
+el.addEventListener('pointermove', (e) => {
+  if (!last) return;
+  const k = view.fov / innerHeight;
+  view.yaw += (e.clientX - last[0]) * k;
+  view.pitch = Math.max(-89, Math.min(89, view.pitch + (e.clientY - last[1]) * k));
+  last = [e.clientX, e.clientY];
+  draw();
+});
+el.addEventListener('wheel', (e) => { view.fov = Math.max(25, Math.min(100, view.fov + e.deltaY * 0.03)); draw(); });
+addEventListener('resize', draw);
+window.__view = { set(yaw, pitch, fov = view.fov) { Object.assign(view, { yaw, pitch, fov }); draw(); }, size: [texture.image.width, texture.image.height] };
+draw();
+document.title = 'READY';
+</script>
+</body>
+</html>
