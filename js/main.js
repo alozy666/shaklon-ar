@@ -25,6 +25,9 @@ function paintHomeGroup() {
   $('home-group').textContent = session.hasClass
     ? (session.group === null ? 'لم تُختر المجموعة بعد.' : `${session.groupLabel()}: ${session.members().join('، ')}.`)
     : '';
+  const change = $('home-change');
+  change.hidden = !session.hasClass || session.group === null;
+  change.onclick = (e) => { e.preventDefault(); session.clearGroup(); paintHomeGroup(); };
 }
 
 function showHome() {

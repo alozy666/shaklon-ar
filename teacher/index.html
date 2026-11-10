@@ -114,7 +114,7 @@
 
 <script src="../vendor/qrcode.js"></script>
 <script type="module">
-import { pack, unpack, secondsPerStudent, isCorrect, level, TASK_KEYS } from '../js/session.js';
+import { pack, unpack, secondsPerStudent, isCorrect, score, level, TASK_KEYS } from '../js/session.js';
 import { BUILDINGS, ANSWERS } from '../js/config.js';
 
 const KEY = 'shaklon-teacher-v2';
@@ -204,15 +204,15 @@ function rowsOf(g) {
     const r = res.rows.find((x) => x[0] === i);
     if (!r) return { name, pending: true };
     const items = r[2].map(([k, f, e, v]) => { const key = TASK_KEYS[k]; const answer = [f, e, v].map((n) => (n < 0 ? null : n)); return { key, answer, ok: isCorrect(key, answer) }; });
-    const ok = items.filter((it) => it.ok).length;
-    return { name, items, ok, total: items.length, seconds: r[1], level: level(ok, items.length) };
+    const sc = score(items);
+    return { name, items, ok: sc.right, total: sc.total, seconds: r[1], level: level(sc.right, sc.total) };
   });
 }
 function drawResults() {
   const groups = Object.keys(data.results).map(Number).sort((a, b) => a - b);
   if (!groups.length) { $('results').innerHTML = '<p class="wait">لا نتائج بعد.</p>'; $('summary').textContent = ''; return; }
   let done = 0, a = 0, b = 0, c = 0;
-  let html = '<table><thead><tr><th>التلميذ</th><th>إجاباته (الأوجه · الأحرف · الرؤوس)</th><th>الصحيح</th><th>المستوى</th><th>الوقت</th></tr></thead><tbody>';
+  let html = '<table><thead><tr><th>التلميذ</th><th>إجاباته (الأوجه · الأحرف · الرؤوس)</th><th>الأعداد الصحيحة</th><th>المستوى</th><th>الوقت</th></tr></thead><tbody>';
   for (const g of groups) {
     html += `<tr class="g"><th colspan="5">المجموعة ${g + 1}</th></tr>`;
     for (const r of rowsOf(g)) {
@@ -232,11 +232,11 @@ $('import').onclick = () => {
 $('print').onclick = () => print();
 $('clear').onclick = () => { if (confirm('مسح كل النتائج من هذه الصفحة؟')) { data.results = {}; save(); drawResults(); } };
 $('csv').onclick = () => {
-  const lines = [['المجموعة', 'التلميذ', 'المبنى', 'الأوجه', 'الأحرف', 'الرؤوس', 'صحيح', 'المستوى', 'الثواني']];
+  const lines = [['المجموعة', 'التلميذ', 'المبنى', 'الأوجه', 'الأحرف', 'الرؤوس', 'المبنى صحيح', 'الأعداد الصحيحة', 'المستوى', 'الثواني']];
   for (const g of Object.keys(data.results).map(Number).sort((x, y) => x - y)) {
     for (const r of rowsOf(g)) {
       if (r.pending) { lines.push([g + 1, r.name, 'لم يُقيَّم']); continue; }
-      for (const it of r.items) lines.push([g + 1, r.name, BUILDINGS[it.key].ar, ...it.answer.map((n) => n ?? ''), it.ok ? 'نعم' : 'لا', r.level, r.seconds]);
+      for (const it of r.items) lines.push([g + 1, r.name, BUILDINGS[it.key].ar, ...it.answer.map((n) => n ?? ''), it.ok ? 'نعم' : 'لا', `${r.ok}/${r.total}`, r.level, r.seconds]);
     }
   }
   const csv = '﻿' + lines.map((l) => l.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');

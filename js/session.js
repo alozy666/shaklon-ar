@@ -36,14 +36,27 @@ export function tasksFor(i, per = 2) {
 
 export const isCorrect = (key, answer) => ANSWERS[key].every((v, k) => v === answer[k]);
 
-/** مستوى تحقق الهدف من نسبة المباني الصحيحة (كما في الروبرك: ثلاثة أرباع فأكثر = حقّق). */
-export function level(correct, total) {
-  const r = total ? correct / total : 0;
-  return r >= 0.75 ? 'حقّق الهدف' : r >= 0.5 ? 'حقّقه جزئيًا' : 'لم يحققه';
+/** عدد الأعداد الصحيحة في إجابات تلميذ (ثلاثة أعداد لكل مبنى) ومجموعها. */
+export function score(items) {
+  let right = 0;
+  for (const it of items) ANSWERS[it.key].forEach((v, k) => { if (v === it.answer[k]) right++; });
+  return { right, total: items.length * 3 };
 }
 
-const blank = () => ({ klass: null, group: null, lit: [], log: [], results: {} });
+/** مستوى تحقق الهدف كما في الخطة: 5 أعداد من 6 فأكثر = حقّق، النصف فأكثر = جزئيًا. */
+export function level(right, total) {
+  const r = total ? right / total : 0;
+  return r >= 0.8 ? 'حقّق الهدف' : r >= 0.5 ? 'حقّقه جزئيًا' : 'لم يحققه';
+}
+
+// groups: تقدّم ونتائج كل مجموعة على حدة، فلا تضيع بيانات مجموعة إذا استعملت الجهاز مجموعة أخرى
+const blank = () => ({ klass: null, group: null, groups: {} });
 let state = blank();
+const mine = () => {
+  const key = state.group === null ? 'demo' : String(state.group);
+  if (!state.groups[key]) state.groups[key] = { lit: [], log: [], results: {} };
+  return state.groups[key];
+};
 
 function save() {
   try { localStorage.setItem(KEY, JSON.stringify(state)); } catch { /* التخزين غير متاح */ }
@@ -53,6 +66,7 @@ export const session = {
   /** يحمّل الجلسة، ويستورد توزيع المعلم إن جاء في الرابط (#c=...). */
   init() {
     try { state = { ...blank(), ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { state = blank(); }
+    if (!state.groups) state.groups = {};
     const match = location.hash.match(/[#&]c=([\w-]+)/);
     if (match) {
       try {
@@ -71,9 +85,9 @@ export const session = {
   get hasClass() { return !!state.klass; },
   get group() { return state.group; },
   get needsGroup() { return !!state.klass && state.group === null; },
-  setGroup(i) {
-    if (state.group !== i) { state.group = i; state.lit = []; state.log = []; state.results = {}; save(); }
-  },
+  setGroup(i) { state.group = i; save(); },
+  /** للرجوع إلى اختيار المجموعة (جهاز تستعمله مجموعة أخرى). بيانات المجموعات تبقى. */
+  clearGroup() { state.group = null; save(); },
   groupLabel() { return state.klass && state.group !== null ? `المجموعة ${state.group + 1}` : 'مجموعة تجريبية'; },
   members() {
     return state.klass && state.group !== null ? state.klass.groups[state.group] : DEMO;
@@ -84,27 +98,28 @@ export const session = {
   tasks(i) { return tasksFor(i, this.per()); },
 
   // ---- تقدّم المغامرة (يبقى لو أُعيد فتح الصفحة) ----
-  get lit() { return state.lit; },
-  get log() { return state.log; },
+  get lit() { return mine().lit; },
+  get log() { return mine().log; },
   markLit(key, name, counts) {
-    if (!state.lit.includes(key)) { state.lit.push(key); state.log.push({ name, counts }); save(); }
+    const g = mine();
+    if (!g.lit.includes(key)) { g.lit.push(key); g.log.push({ name, counts }); save(); }
   },
 
   // ---- نتائج التقييم ----
-  result(i) { return state.results[i] || null; },
-  saveResult(i, items, seconds) { state.results[i] = { items, seconds }; save(); },
-  clearResult(i) { delete state.results[i]; save(); },
-  doneCount() { return Object.keys(state.results).length; },
+  result(i) { return mine().results[i] || null; },
+  saveResult(i, items, seconds) { mine().results[i] = { items, seconds }; save(); },
+  clearResult(i) { delete mine().results[i]; save(); },
+  doneCount() { return Object.keys(mine().results).length; },
   allDone() { return this.doneCount() >= this.members().length; },
   /** يمسح التقدّم والنتائج لهذه المجموعة (للمعلم). */
-  wipe() { state.lit = []; state.log = []; state.results = {}; save(); },
+  wipe() { const g = mine(); g.lit = []; g.log = []; g.results = {}; save(); },
 
   /** نتائج المجموعة في نص قصير يُعرض رمز QR لصفحة المعلم. */
   resultsCode() {
     const names = this.members();
     return pack({
       v: 2, id: state.klass ? state.klass.id : 'demo', g: state.group ?? 0, n: names,
-      r: Object.entries(state.results).map(([i, r]) => [
+      r: Object.entries(mine().results).map(([i, r]) => [
         Number(i), r.seconds, r.items.map((it) => [TASK_KEYS.indexOf(it.key), ...it.answer.map((v) => (v === null ? -1 : v))]),
       ]),
     });

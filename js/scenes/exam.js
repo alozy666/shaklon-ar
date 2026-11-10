@@ -8,7 +8,7 @@ import { createShaklon } from '../shaklon.js';
 import { cameraAxisIn, trackball, makeGround } from './common.js';
 import { makePortal, throughPortal, placeShaklon } from './city.js';
 import { BUILDINGS, ELEMENTS, ELEMENT_ORDER, EXAM_COLORS, ANSWERS } from '../config.js';
-import { isCorrect, level } from '../session.js';
+import { isCorrect, score, level } from '../session.js';
 import { esc } from '../hud.js';
 import { sfx } from '../audio.js';
 import { tween, ease, wait } from '../tween.js';
@@ -221,16 +221,16 @@ export class ExamScene {
     const rows = names.map((name, i) => {
       const r = s.result(i);
       if (!r) return `<tr><th>${esc(name)}</th><td colspan="2" class="empty">لم يُقيَّم بعد</td></tr>`;
-      const ok = r.items.filter((it) => isCorrect(it.key, it.answer)).length;
+      const sc = score(r.items);
       const cells = r.items.map((it) => {
         const good = isCorrect(it.key, it.answer);
         const a = it.answer.map((v) => (v === null ? '–' : v)).join(' · ');
         return `<span class="${good ? 'ok' : 'no'}">${esc(BUILDINGS[it.key].ar)}: ${a} ${good ? '✓' : `✕ (${ANSWERS[it.key].join(' · ')})`}</span>`;
       }).join('<br>');
-      return `<tr><th>${esc(name)}</th><td style="font-size:15px;text-align:start">${cells}</td><td>${ok}/${r.items.length}<br><small>${level(ok, r.items.length)}</small></td></tr>`;
+      return `<tr><th>${esc(name)}</th><td style="font-size:15px;text-align:start">${cells}</td><td>${sc.right}/${sc.total}<br><small>${level(sc.right, sc.total)}</small></td></tr>`;
     }).join('');
     const body = el('div');
-    body.innerHTML = `<table class="tbl"><thead><tr><th>التلميذ</th><th>${ELEMENT_ORDER.map((k) => ELEMENTS[k].ar).join(' · ')}</th><th>الصحيح</th></tr></thead><tbody>${rows}</tbody></table>`;
+    body.innerHTML = `<table class="tbl"><thead><tr><th>التلميذ</th><th>${ELEMENT_ORDER.map((k) => ELEMENTS[k].ar).join(' · ')}</th><th>الأعداد الصحيحة</th></tr></thead><tbody>${rows}</tbody></table>`;
     if (s.doneCount() && window.qrcode) {
       const url = new URL('teacher/', location.href.split(/[?#]/)[0]).href + '#r=' + s.resultsCode();
       const qr = window.qrcode(0, 'L');
