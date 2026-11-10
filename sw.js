@@ -14,6 +14,7 @@ const CORE = [
   'vendor/fonts/baloo-bhaijaan-2-latin-700-normal.woff2', 'vendor/fonts/baloo-bhaijaan-2-latin-800-normal.woff2',
   'assets/icon.svg', 'assets/audio/manifest.json', 'assets/targets/targets.mind', 'assets/targets/mat.png',
   'teacher/', 'teacher/index.html',
+  'info/', 'info/index.html',
 ];
 
 self.addEventListener('install', (event) => {

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>مدينة شكلون: بطاقة الدرس</title>
+<link rel="icon" href="../assets/icon.svg">
+<link rel="stylesheet" href="../css/app.css">
+<style>
+  /* صفحة قراءة: محتوى الدرس الذي تفتحه كائنات مشروع MyWebAR (الهدف، الدرس، النشاط، التقييم، المراجع).
+     لا بيانات شخصية هنا. النص ملخّص من خطة الدرس، فإن تغيّرت الخطة وجب تحديثه. */
+  html, body { height: auto; background: var(--navy); }
+  html { overflow: auto; }
+  /* body لا يكون حاوية تمرير، وإلا لم يثبت شريط الأقسام في الأعلى */
+  body { overflow: visible; user-select: text; -webkit-user-select: text; padding: 0 0 48px; line-height: 1.75; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 0 16px; }
+  .top { display: flex; align-items: center; gap: 14px; padding: 22px 0 12px; color: #fff; }
+  .top img { width: 72px; height: 72px; flex: none; }
+  .top h1 { margin: 0; font-size: 30px; font-weight: 800; line-height: 1.2; }
+  .top p { margin: 2px 0 0; font-size: 17px; opacity: .9; }
+  nav { position: sticky; top: 0; z-index: 2; background: var(--navy); padding: 10px 0; display: flex; flex-wrap: wrap; gap: 8px; }
+  nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 4px 16px; border-radius: 22px;
+    background: #2a3577; color: #fff; text-decoration: none; font-weight: 700; font-size: 17px; }
+  nav a.go { background: var(--orange); color: var(--ink); }
+  section { background: var(--paper); border-radius: 22px; padding: 20px 22px 22px; margin: 14px 0; scroll-margin-top: 120px;
+    border: 4px solid transparent; }
+  section:target { border-color: var(--face); }
+  h2 { margin: 0 0 8px; font-size: 26px; font-weight: 800; display: flex; align-items: center; gap: 10px; }
+  h2 b { display: inline-grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; color: #fff; font-size: 22px; flex: none; }
+  h3 { margin: 16px 0 4px; font-size: 20px; font-weight: 800; color: var(--blue-d); }
+  p { margin: 6px 0; font-size: 18px; }
+  ul, ol { margin: 4px 0; padding-inline-start: 22px; font-size: 18px; }
+  li { margin: 3px 0; }
+  .goal { font-size: 21px; font-weight: 700; background: var(--mist); border-radius: 16px; padding: 14px 16px; }
+  .chip { display: inline-block; padding: 2px 14px; border-radius: 16px; background: var(--mist); font-weight: 700; font-size: 16px; }
+  table { width: 100%; border-collapse: collapse; font-size: 17px; }
+  th, td { border: 2px solid #dfe5fb; padding: 8px 10px; text-align: start; vertical-align: top; }
+  th { background: var(--mist); font-weight: 800; white-space: nowrap; }
+  .stage { border: 3px solid var(--mist); border-radius: 18px; padding: 12px 14px; margin: 12px 0; }
+  .stage h3 { margin-top: 0; }
+  .roles { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .roles > div { background: var(--mist); border-radius: 14px; padding: 10px 12px; }
+  .roles h4 { margin: 0 0 2px; font-size: 18px; font-weight: 800; }
+  .keys { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  .keys span { padding: 2px 14px; border-radius: 16px; font-weight: 700; font-size: 16px; color: var(--ink); }
+  .refs li { margin: 8px 0; font-size: 16px; line-height: 1.6; }
+  .refs li[dir="ltr"] { text-align: left; font-family: "Segoe UI", Tahoma, sans-serif; }
+  @media (max-width: 620px) { .roles { grid-template-columns: 1fr; } h2 { font-size: 23px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <img src="../assets/icon.svg" alt="">
+    <div>
+      <h1>مدينة شكلون</h1>
+      <p>وصف المجسمات: الأوجه والأحرف والرؤوس · رياضيات الصف الثاني الابتدائي · الدرس 7-2</p>
+    </div>
+  </header>
+
+  <nav aria-label="أقسام الصفحة">
+    <a href="#objective">الهدف</a>
+    <a href="#lesson">الدرس</a>
+    <a href="#activity">النشاط</a>
+    <a href="#assessment">التقييم</a>
+    <a href="#references">المراجع</a>
+    <a class="go" href="https://momento360.com/e/u/d49cf3127c774fdeb36b2413fb54041d">جولة 360</a>
+    <a class="go" href="../">افتح المغامرة</a>
+  </nav>
+
+  <section id="objective">
+    <h2><b style="background:#ef8a2b">2</b>الهدف التعليمي</h2>
+    <p class="goal">أن يحلّل التلميذ مجسمين إلى عناصرهما (الأوجه والأحرف والرؤوس) داخل بيئة الواقع المعزز (AR)، بدقة 5 أعداد من 6، خلال دقيقتين و40 ثانية.</p>
+    <p><span class="chip">مستوى التحليل في تصنيف بلوم</span></p>
+  </section>
+
+  <section id="lesson">
+    <h2><b style="background:#17a589">3</b>بيانات الدرس</h2>
+    <table>
+      <tr><th>المادة والصف</th><td>الرياضيات، الصف الثاني الابتدائي (الحلقة الأولى)</td></tr>
+      <tr><th>الموضوع</th><td>الفصل السابع: الأشكال الهندسية، الدرس 7-2: وصف المجسمات (كتاب الطالب ص146-147)</td></tr>
+      <tr><th>المفاهيم الجديدة</th><td>الوجه، الحرف، الرأس، السطح المنحني</td></tr>
+      <tr><th>المجسمات</th><td>المكعب، متوازي المستطيلات، الهرم، الأسطوانة، المخروط، الكرة</td></tr>
+      <tr><th>الزمن</th><td>35 دقيقة: 20 دقيقة للتعلّم و15 دقيقة للتقييم</td></tr>
+      <tr><th>الاستراتيجية</th><td>التعلم بالاستقصاء الموجّه في مجموعات، بمدخل التعليم والتعلم السياقي (CTL)</td></tr>
+      <tr><th>التقنية الغامرة</th><td>الواقع المعزز (AR) عبر تطبيق الويب «مدينة شكلون»، وتسبقه تهيئة بصورة 360</td></tr>
+    </table>
+    <h3>تعريفات الكتاب</h3>
+    <div class="keys">
+      <span style="background:var(--face)">الوجه سطح مستوٍ</span>
+      <span style="background:var(--edge); color:#fff">الحرف التقاء وجهين</span>
+      <span style="background:var(--vertex); color:#fff">الرأس نقطة التقاء ثلاثة أوجه أو أكثر</span>
+    </div>
+  </section>
+
+  <section id="activity">
+    <h2><b style="background:#db3a78">6</b>النشاط التعليمي الغامر</h2>
+    <p><strong>مغامرة «إنقاذ مدينة الأشكال» (20 دقيقة).</strong> انطفأت أنوار مدينة الروبوت شكلون، ولا تعود الأنوار إلى المبنى حتى يعدّ التلاميذ أوجهه وأحرفه ورؤوسه. تخوض كل مجموعة (خمسة تلاميذ تقريبًا) المغامرة بجهاز لوحي واحد، ويتناوب أعضاؤها عليه، والتطبيق يوزّع الأدوار بأسمائهم ويوجّههم خطوة خطوة، فيكون المعلم موجّهًا وداعمًا.</p>
+    <p>خطوات المحقق في كل مبنى: <span class="chip">أتوقع</span> <span class="chip">أتجوّل</span> <span class="chip">أعدّ</span> <span class="chip">أقارن</span></p>
+
+    <div class="stage">
+      <h3>1) التهيئة بجولة 360 ثم البوابة (3 دقائق)</h3>
+      <div class="roles">
+        <div><h4>دور المعلم</h4><ul>
+          <li>يعرض رمز جولة «مدينة شكلون 360»، ثم «رمز الصف».</li>
+          <li>يتجوّل ويسأل دون أن يعطي الإجابة: «كم وجهًا أصفر ترون؟ هل للمكعب أوجه لا نراها؟».</li>
+        </ul></div>
+        <div><h4>دور التلميذ</h4><ul>
+          <li>يزور مع مجموعته محطات الجولة: الوجه، الحرف، الرأس، ويعدّ ما يراه.</li>
+          <li>تمسح مجموعته رمز الصف وتختار رقمها، فتنفتح البوابة ويخرج شكلون معلنًا المهمة.</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <h3>2) التحقيق الأول في البيت بتوجيه التطبيق (5 دقائق)</h3>
+      <div class="roles">
+        <div><h4>دور المعلم</h4><ul>
+          <li>يعرض خطوات المحقق الأربع وقاعدة التناوب وقواعد الأمان.</li>
+          <li>يدعم المجموعات بالأسئلة: «هل رفعتم المبنى؟ ماذا يوجد تحته؟».</li>
+          <li>يسجّل الأعداد مع التلاميذ في «سجل المدينة» على السبورة.</li>
+        </ul></div>
+        <div><h4>دور التلميذ</h4><ul>
+          <li>أتوقع: يكتب صاحب الدور توقع المجموعة.</li>
+          <li>أتجوّل: يدوّر البيت ويرفعه ليرى أسفله.</li>
+          <li>أعدّ: يضيء الأوجه والأحرف والرؤوس بالعدسات الثلاث، كل عدسة مع صاحب دورها.</li>
+          <li>أقارن: يقارن العدّ بالتوقع، ثم يضيء البيت.</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <h3>3) الاستقصاء الجماعي: الهرم والبرج (8 دقائق)</h3>
+      <div class="roles">
+        <div><h4>دور المعلم</h4><ul>
+          <li>يوجّه المجموعات إلى الهرم ثم البرج، ويتجوّل بقائمة الرصد.</li>
+          <li>يسأل عند البرج: «لماذا لم يضئ الجزء الملتف؟».</li>
+          <li>يصل مع التلاميذ إلى قاعدة المحقق: «نعدّ الظاهر وغير الظاهر، ولا نعدّ الشيء مرتين».</li>
+        </ul></div>
+        <div><h4>دور التلميذ</h4><ul>
+          <li>يتوقع ثم يعدّ العنصر المكلّف به عندما يظهر اسمه.</li>
+          <li>يسلّم الجهاز لصاحب الدور التالي ويخبر زملاءه بما وصل إليه.</li>
+          <li>يستنتج أن السطح المنحني ليس وجهًا، وأن الحافة المنحنية ليست حرفًا.</li>
+        </ul></div>
+      </div>
+    </div>
+
+    <div class="stage">
+      <h3>4) تحدي «المجسم الغامض» والتأمل (4 دقائق)</h3>
+      <div class="roles">
+        <div><h4>دور المعلم</h4><ul>
+          <li>يتابع ظهور التحدي على أجهزة المجموعات.</li>
+          <li>يسأل: «ما أوجه التشابه بين متوازي المستطيلات والمكعب؟».</li>
+          <li>يختم بسؤال تأملي: «ما الذي ساعدنا على عدّ العناصر المختبئة؟».</li>
+        </ul></div>
+        <div><h4>دور التلميذ</h4><ul>
+          <li>يحلّل أعداد المبنى الغامض ويخمّن ما هو ويبرّر تخمينه.</li>
+          <li>يكشفه ثم يتحقق بعدّ عناصره.</li>
+          <li>يعبّر عمّا ساعده: التدوير، والرفع، وبقاء ما عدّه مضيئًا.</li>
+        </ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="assessment">
+    <h2><b style="background:#f04545">7</b>التقييم: «مهمة المحقق»</h2>
+    <p>التقييم فردي داخل التطبيق نفسه دون ورقة (15 دقيقة)، وهو الفصل الأخير من المغامرة.</p>
+    <h3>خطواته</h3>
+    <ol>
+      <li>بعد أن تضيء المدينة يظهر زر «مهمة المحقق».</li>
+      <li>يأخذ التلميذ جهاز مجموعته في دوره، ويختار اسمه، ويضغط «ابدأ» فيبدأ وقته.</li>
+      <li>يحلّل مبنيين وحده: مجسمًا متعدد الأوجه ومجسمًا فيه سطح منحنٍ، يختلفان عن مبنيي زملائه.</li>
+      <li>يكتب عدد أوجه كل مبنى وأحرفه ورؤوسه (ستة أعداد)، دون عدسات ولا عدّادات ولا تلميحات.</li>
+      <li>وقت كل تلميذ دقيقتان و40 ثانية في مجموعة من خمسة (15 دقيقة ÷ عدد الأعضاء، ناقص 20 ثانية لتسليم الجهاز).</li>
+      <li>بعد انتهاء المجموعة يمسح المعلم رمز نتائجها بجهازه، فتنتقل إلى «صفحة المعلم».</li>
+    </ol>
+    <h3>أدواته</h3>
+    <ul>
+      <li>«مهمة المحقق» داخل التطبيق: يصحّح الإجابات تلقائيًا.</li>
+      <li>«صفحة المعلم»: تجمع نتائج المجموعات ومستوى كل تلميذ.</li>
+      <li>قائمة رصد أثناء الاستقصاء والتقييم.</li>
+      <li>روبرك التقييم وسجل رصد الصف.</li>
+    </ul>
+    <h3>معيار الحكم</h3>
+    <table>
+      <tr><th>5 أو 6 أعداد صحيحة</th><td>حقّق الهدف ← نشاط إثرائي «عدسة المحقق» على أشياء الصف</td></tr>
+      <tr><th>3 أو 4 أعداد</th><td>حقّقه جزئيًا ← يعيد العدّ داخل المدينة مع زميل متمكن</td></tr>
+      <tr><th>أقل من 3</th><td>لم يحققه ← يعيد المعلم معه مهمة المدينة بخطوات المحقق</td></tr>
+    </table>
+  </section>
+
+  <section id="references">
+    <h2><b style="background:#ffc928; color:var(--ink)">9</b>قائمة المراجع</h2>
+    <ol class="refs">
+      <li>وزارة التربية والتعليم – مملكة البحرين. الرياضيات: الصف الثاني الابتدائي، الفصل السابع: الأشكال الهندسية، الدرس 7-2: وصف المجسمات، ص146-147.</li>
+      <li dir="ltr">Alfieri, L., Brooks, P. J., Aldrich, N. J., &amp; Tenenbaum, H. R. (2011). Does discovery-based instruction enhance learning? <i>Journal of Educational Psychology, 103</i>(1), 1–18.</li>
+      <li dir="ltr">Azuma, R. T. (1997). A survey of augmented reality. <i>Presence: Teleoperators and Virtual Environments, 6</i>(4), 355–385.</li>
+      <li dir="ltr">Bruner, J. S. (1966). <i>Toward a theory of instruction</i>. Harvard University Press.</li>
+      <li dir="ltr">Cao, W., &amp; Yu, Z. (2023). The impact of augmented reality on student attitudes, motivation, and learning achievements: A meta-analysis (2016–2023). <i>Humanities and Social Sciences Communications, 10</i>(1). https://doi.org/10.1057/s41599-023-01852-2</li>
+      <li dir="ltr">Garzón, J., &amp; Acevedo, J. (2019). Meta-analysis of the impact of augmented reality on students’ learning gains. <i>Educational Research Review, 27</i>, 244–260.</li>
+      <li dir="ltr">Johnson, E. B. (2002). <i>Contextual teaching and learning: What it is and why it’s here to stay</i>. Corwin Press.</li>
+      <li dir="ltr">Li, G., Luo, H., Chen, D., Wang, P., Yin, X., &amp; Zhang, J. (2025). Augmented reality in higher education: A systematic review and meta-analysis (2000–2023). <i>Education Sciences, 15</i>(6), 678. https://doi.org/10.3390/educsci15060678</li>
+      <li dir="ltr">Milgram, P., &amp; Kishino, F. (1994). A taxonomy of mixed reality visual displays. <i>IEICE Transactions on Information and Systems, E77-D</i>(12), 1321–1329.</li>
+      <li dir="ltr">MindAR. (n.d.). <i>MindAR: Web augmented reality</i>. https://hiukim.github.io/mind-ar-js-doc/</li>
+      <li dir="ltr">Mishra, P., &amp; Koehler, M. J. (2006). Technological pedagogical content knowledge: A framework for teacher knowledge. <i>Teachers College Record, 108</i>(6), 1017–1054.</li>
+      <li dir="ltr">Momento360. (n.d.). <i>Momento360</i>. https://momento360.com/</li>
+      <li dir="ltr">Piaget, J., &amp; Inhelder, B. (1969). <i>The psychology of the child</i>. Basic Books.</li>
+      <li dir="ltr">three.js. (n.d.). <i>three.js: JavaScript 3D library</i>. https://threejs.org/</li>
+      <li dir="ltr">Van Hiele, P. M. (1986). <i>Structure and insight: A theory of mathematics education</i>. Academic Press.</li>
+      <li dir="ltr">Vygotsky, L. S. (1978). <i>Mind in society: The development of higher psychological processes</i>. Harvard University Press.</li>
+    </ol>
+  </section>
+</div>
+</body>
+</html>
