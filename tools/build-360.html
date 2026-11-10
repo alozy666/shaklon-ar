@@ -18,7 +18,7 @@
 <h1>تجهيز صورة 360: «مدينة شكلون 360»</h1>
 <p>أداة تطوير: تبني ساحة معلوماتية من مجسمات الأداة نفسها (محطات الوجه والحرف والرأس)، وتلتقطها صورة 360
 (equirectangular) وتحفظها في <code>assets/360/</code>. تعمل فقط مع الخادم المحلي <code>tools/serve.mjs</code>.
-الأعداد تُقرأ من <code>ANSWERS</code> في <code>js/config.js</code>.</p>
+الصورة تهيئة للدرس: تعرّف وتسأل ولا تكتب أعدادًا.</p>
 <p id="status">جارٍ البناء...</p>
 <div id="out"></div>
 
@@ -26,7 +26,7 @@
 import * as THREE from 'three';
 import { Building } from '../js/buildings.js';
 import { createShaklon } from '../js/shaklon.js';
-import { ANSWERS, ELEMENTS } from '../js/config.js';
+import { ELEMENTS } from '../js/config.js';
 
 const params = new URLSearchParams(location.search);
 const status = document.getElementById('status');
@@ -38,7 +38,7 @@ const EYE = 3.6;                                    // ارتفاع عين ال�
 const FONT = '"Baloo Bhaijaan 2", sans-serif';
 const INK = '#141b45';
 const LIGHT = 0xe6ebff;                             // لون مجسمات الشرح (محايد لتظهر ألوان العناصر)
-const [FACES, EDGES, VERTS] = ANSWERS.house;        // المكعب: مثال الشرح
+// الصورة تهيئة تسبق المغامرة: تشرح المفاهيم وتسأل، ولا تكتب أي عدد، حتى يبقى «أتوقع» ثم «أعدّ» للتلميذ.
 // المكعب الزجاجي لا يُنظر إليه على امتداد قطره، وإلا انطبق رأسه القريب على البعيد فظهرت 7 رؤوس لا 8.
 const GLASS_YAW = 0.38, GLASS_TILT = 0.3;
 
@@ -386,14 +386,14 @@ async function buildStations() {
   for (const el of cubeF.els.faces) el.mesh.material.emissiveIntensity = 0.22;
   for (const el of cubeF.els.edges) { el.mesh.material.color.set(INK); el.mesh.material.opacity = 1; el.mesh.scale.set(2.2, 1, 2.2); }
   hologram(sFaces, cubeF);
-  sign(sFaces, { badge: '1', title: 'الوجه', def: 'الوجه سطح مستوٍ', chip: `للمكعب ${FACES} أوجه`, small: '3 تراها، و3 مختفية خلفه وتحته' });
+  sign(sFaces, { badge: '1', title: 'الوجه', def: 'الوجه سطح مستوٍ', chip: 'كم وجهًا أصفر ترى؟', small: 'هل للمكعب أوجه مختفية خلفه وتحته؟' });
 
   // 2) الحرف: مكعب زجاجي لتُرى الأحرف كلها زرقاء
   pad(sEdges);
   const cubeE = solid('house', { color: LIGHT });
   glass(cubeE); lightAll(cubeE, 'edges');
   hologram(sEdges, cubeE, 6.4, 1.95, GLASS_YAW, GLASS_TILT);
-  sign(sEdges, { badge: '2', title: 'الحرف', def: 'الحرف التقاء وجهين', chip: `للمكعب ${EDGES} حرفًا`, small: `عُدّ الخطوط الزرقاء: هل تجدها ${EDGES}؟` });
+  sign(sEdges, { badge: '2', title: 'الحرف', def: 'الحرف التقاء وجهين', chip: 'عُدّ الخطوط الزرقاء', small: 'كل خط أزرق حرف من أحرف المكعب' });
 
   // 3) الرأس: مكعب زجاجي لتُرى الرؤوس كلها حمراء
   pad(sVerts);
@@ -402,7 +402,7 @@ async function buildStations() {
   for (const el of cubeV.els.edges) el.mesh.material.opacity = 0.95;
   for (const el of cubeV.els.vertices) el.mesh.scale.setScalar(1.25);
   hologram(sVerts, cubeV, 6.4, 1.95, GLASS_YAW, GLASS_TILT);
-  sign(sVerts, { badge: '3', title: 'الرأس', def: 'الرأس نقطة التقاء ثلاثة أوجه أو أكثر', chip: `للمكعب ${VERTS} رؤوس`, small: `عُدّ الكرات الحمراء: هل تجدها ${VERTS}؟` });
+  sign(sVerts, { badge: '3', title: 'الرأس', def: 'الرأس نقطة التقاء ثلاثة أوجه أو أكثر', chip: 'عُدّ الكرات الحمراء', small: 'كل كرة حمراء رأس من رؤوس المكعب' });
 
   // 4) انتبه: السطح المنحني ليس وجهًا، والحافة المنحنية ليست حرفًا
   pad(sNote);

@@ -59,7 +59,22 @@ el.addEventListener('pointermove', (e) => {
 });
 el.addEventListener('wheel', (e) => { view.fov = Math.max(25, Math.min(100, view.fov + e.deltaY * 0.03)); draw(); });
 addEventListener('resize', draw);
-window.__view = { set(yaw, pitch, fov = view.fov) { Object.assign(view, { yaw, pitch, fov }); draw(); }, size: [texture.image.width, texture.image.height] };
+window.__view = {
+  set(yaw, pitch, fov = view.fov) { Object.assign(view, { yaw, pitch, fov }); draw(); },
+  size: [texture.image.width, texture.image.height],
+  /** لقطة منظور بمقاس محدد تُحفظ في assets/360/ (للوثائق وخطة الدرس). */
+  async snap(name, yaw, pitch, fov, w = 1200, h = 900) {
+    Object.assign(view, { yaw, pitch, fov });
+    renderer.setPixelRatio(1); renderer.setSize(w, h, false);
+    camera.aspect = w / h; camera.fov = fov; camera.updateProjectionMatrix();
+    camera.rotation.y = Math.PI / 2 + (yaw * Math.PI) / 180; camera.rotation.x = (pitch * Math.PI) / 180;
+    renderer.render(scene, camera);
+    const blob = await (await fetch(el.toDataURL('image/png'))).blob();
+    const res = await fetch(`/__save?dir=360&name=${name}`, { method: 'POST', body: blob });
+    renderer.setPixelRatio(Math.min(2, devicePixelRatio)); draw();
+    return res.ok ? blob.size : 0;
+  },
+};
 draw();
 document.title = 'READY';
 </script>
