@@ -9,6 +9,9 @@ export const ELEMENTS = {
 };
 export const ELEMENT_ORDER = ['faces', 'edges', 'vertices'];
 
+// طبقة التوهج الحقيقي: ما وُسم بها يتوهج (انظر js/fx.js). زينة فقط، لا أثر لها في العدّ.
+export const FX_LAYER = 5;
+
 export const BUILDINGS = {
   house:   { ar: 'البيت',          solid: 'cube',     color: 0x4f6fe3 },
   pyramid: { ar: 'الهرم',          solid: 'pyramid',  color: 0xef8a2b },
@@ -43,6 +46,8 @@ export const TARGETS_URL = 'assets/targets/targets.mind';
 
 // رسائل شكلون. المفتاح هو اسم ملف التسجيل: assets/audio/<key>.mp3
 export const LINES = {
+  tap_cube: 'اضغطوا المكعب المضيء لتظهر مدينتي!',
+  city_build: 'انظروا! مدينتي تُبنى من رؤوس وأحرف وأوجه!',
   city_intro: 'انطفأت أنوار مدينتي! تعود الأنوار إلى كل مبنى عندما تعدّون أوجهه وأحرفه ورؤوسه.',
   city_pick: 'المسوا المبنى الذي يقفز لنبدأ التحقيق.',
   predict: 'أتوقّع: تشاوروا، كم وجهًا للمبنى؟ وكم حرفًا؟ وكم رأسًا؟',

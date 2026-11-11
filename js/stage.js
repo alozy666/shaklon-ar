@@ -21,10 +21,22 @@ function addLights(world) {
   world.add(ambient, key, key.target, fill, fill.target);
 }
 
+/**
+ * طبقة «الليل» خلف المجسمات: تعتّم صورة الكاميرا (AR) أو خلفية الصفحة (3D) دون أن تمسّ المجسمات ولا الأزرار.
+ * ترجع setNight(k): k من 0 (نهار) إلى 1 (ظلام تام).
+ */
+function addNight(container) {
+  const el = document.createElement('div');
+  el.className = 'night';
+  container.appendChild(el);
+  return (k) => { el.style.opacity = String(Math.min(1, Math.max(0, k))); };
+}
+
 function create3d(container) {
   const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
   renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
   container.appendChild(renderer.domElement);
+  const setNight = addNight(container);
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(36, 1, 0.05, 60);
   const world = new THREE.Group();
@@ -36,8 +48,12 @@ function create3d(container) {
   let zoom = 1, zoomGoal = 1;
   function place() {
     const half = Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
-    const dist = (Math.max(2.1, 1.9 / camera.aspect) / (2 * half)) * zoom;
-    const lookY = 0.1 + 0.2 * Math.min(1, Math.max(0, (zoom - 0.62) / 0.38));
+    const focus = Math.min(1, Math.max(0, (zoom - 0.62) / 0.38));     // 0 = العرض العام، 1 = مبنى مفحوص
+    // العرض الأفقي المطلوب 1.9 حتى تظهر السجادة كلها في العرض العام. على شاشة هاتف طولية هذا يُبعد الكاميرا
+    // كثيرًا عند فحص مبنى فيظهر صغيرًا، والمبنى المفحوص يكفيه 1.3: نقرّب هناك فقط. اللوحي كما هو.
+    const wide = camera.aspect < 0.6 ? 1.9 - 0.6 * focus : 1.9;
+    const dist = (Math.max(2.1, wide / camera.aspect) / (2 * half)) * zoom;
+    const lookY = 0.1 + 0.2 * focus;
     camera.position.set(0, lookY + dist * 0.34, dist);
     camera.lookAt(0, lookY, 0);
   }
@@ -52,7 +68,7 @@ function create3d(container) {
   resize();
 
   return {
-    mode: '3d', renderer, scene, camera, world, onMat: false, manual: false,
+    mode: '3d', renderer, scene, camera, world, onMat: false, manual: false, setNight,
     start: async () => {},
     update(dt) {
       if (Math.abs(zoom - zoomGoal) < 0.002) return;
@@ -74,6 +90,7 @@ async function createAr(container, scale) {
   });
   const { renderer, scene, camera } = mindar;
   const anchor = mindar.addAnchor(0);          // الصورة الوحيدة: سجادة المدينة
+  const setNight = addNight(container);        // فوق فيديو الكاميرا (z-index -2 في MindAR) وتحت لوحة الرسم
 
   const world = new THREE.Group();
   world.matrixAutoUpdate = false;
@@ -96,7 +113,7 @@ async function createAr(container, scale) {
   let size = 1;
 
   const stage = {
-    mode: 'ar', renderer, scene, camera, world,
+    mode: 'ar', renderer, scene, camera, world, setNight,
     onMat: false,              // المشهد ملتصق بالسجادة الآن
     manual: false,             // المستخدم وضعه بيده: لا نتبع السجادة
     async start() {

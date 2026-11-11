@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import { SCENES, LINES } from './config.js';
 import { createStage } from './stage.js';
+import { createFx } from './fx.js';
 import { createHud, esc } from './hud.js';
 import { Pointer } from './input.js';
 import { initAudio, unlockAudio, sfx, stopVoice } from './audio.js';
@@ -128,6 +129,8 @@ async function start(sceneKey, mode) {
 
   const stage = await createStage({ mode, container });
   app.stage = stage;
+  app.fx = createFx(stage);                              // توهج حقيقي وشرارات (زينة)
+  if (params.get('fx') === '0') app.fx.enabled = false;  // للمقارنة والاختبار: بلا توهج حقيقي
   container.classList.toggle('mode-3d', stage.mode === '3d');
   await document.fonts.load('800 60px "Baloo Bhaijaan 2"', '12345').catch(() => {});
 
@@ -175,13 +178,19 @@ async function start(sceneKey, mode) {
   app.go(sceneKey);
 
   const clock = new THREE.Clock();
-  stage.renderer.setAnimationLoop(() => {
-    const dt = Math.min(0.05, clock.getDelta());
+  const frame = (dt) => {
     stage.update(dt);
     tickTweens(dt);
     app.scene.update(dt);
-    stage.renderer.render(stage.scene, stage.camera);
-  });
+    app.fx.update(dt);
+    app.fx.render();
+  };
+  const loop = () => frame(Math.min(0.05, clock.getDelta()));
+  stage.renderer.setAnimationLoop(loop);
+  // للاختبار من الكونسول: advance يقدّم الزمن يدويًّا (المتصفح يوقف الحلقة حين تكون الصفحة في الخلفية)،
+  // و hold(true) يوقف الحلقة الحية حتى لا يتقدم الزمن من نفسه أثناء تسجيل لقطةً لقطة (tools/dev-capture.js).
+  app.advance = async (seconds, step = 1 / 30) => { for (let t = 0; t < seconds; t += step) { frame(step); await 0; } };
+  app.hold = (on) => stage.renderer.setAnimationLoop(on ? null : loop);
 }
 
 initAudio({ tts: params.get('tts') !== '0' });

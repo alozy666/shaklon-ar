@@ -1,6 +1,7 @@
 // الروبوت شكلون، مبني من أشكال أولية. ارتفاعه وحدة واحدة تقريبًا قبل التصغير.
 import * as THREE from 'three';
 import { tween, ease } from './tween.js';
+import { FX_LAYER } from './config.js';
 
 const BLUE = 0x4f6fe3;
 const BLUE_DARK = 0x3a55c4;
@@ -86,6 +87,7 @@ export function createShaklon() {
   jet.position.y = 0.04;
 
   body.add(torso, chest, neck, head, ...arms, jet);
+  for (const o of [ball, jet, chest]) o.layers.enable(FX_LAYER);          // هوائيه ومحرّكه وضوء صدره تتوهج
   group.traverse((o) => { if (o.isMesh) o.userData = { kind: 'shaklon' }; });
 
   const pickables = [];

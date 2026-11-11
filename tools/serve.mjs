@@ -16,11 +16,13 @@ const TYPES = {
   '.mp3': 'audio/mpeg', '.mind': 'application/octet-stream', '.md': 'text/plain; charset=utf-8',
 };
 
-// أدوات tools/ تحفظ مخرجاتها عبر هذا المسار، في مجلدين فقط:
-// assets/targets (السجادة وملف التتبّع) و assets/360 (صورة 360).
+// أدوات tools/ تحفظ مخرجاتها عبر هذا المسار، في هذه المجلدات فقط:
+// assets/targets (السجادة وملف التتبّع)، assets/360 (صورة 360)،
+// و .capture (لقطات وصوت تسجيل الفيديو التجريبي من tools/dev-capture.js: خارج git ولا يُنشر).
 const SAVE_DIRS = {
   targets: path.join(root, 'assets', 'targets'),
   360: path.join(root, 'assets', '360'),
+  capture: path.join(root, '.capture'),
 };
 
 function send(res, code, body, type = 'text/plain; charset=utf-8') {
@@ -34,7 +36,7 @@ http.createServer((req, res) => {
   if (req.method === 'POST' && url.pathname === '/__save') {
     const name = path.basename(url.searchParams.get('name') || '');
     const dir = SAVE_DIRS[url.searchParams.get('dir') || 'targets'];
-    if (!dir || !/^[\w.-]+\.(png|mind|jpg)$/.test(name)) return send(res, 400, 'bad name');
+    if (!dir || !/^[\w.-]+\.(png|mind|jpg|wav)$/.test(name)) return send(res, 400, 'bad name');
     const chunks = [];
     req.on('data', (c) => chunks.push(c));
     req.on('end', () => {

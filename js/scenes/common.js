@@ -56,6 +56,7 @@ export function makeGround({ w = 1, d = 0.75, color = 0x1c2552, rim = 0x3f4fa6, 
   const top = new THREE.Mesh(new THREE.PlaneGeometry(w, d), new THREE.MeshStandardMaterial({ color, roughness: 0.9 }));
   top.rotation.x = -Math.PI / 2;
   group.add(base, top);
+  group.userData.top = top;             // سطح السجادة: المدينة تعتّمه حين ينزل الليل
   if (image) {
     new THREE.TextureLoader().load(image, (tex) => {
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -313,8 +314,9 @@ export class Focuser {
  * العدسة تضيء عنصرها فقط، وما أُضيء لا يُعدّ مرتين.
  */
 export class Counter {
-  constructor(hud) {
+  constructor(hud, fx = null) {
     this.hud = hud;
+    this.fx = fx;                 // مؤثرات اختيارية (js/fx.js)
     this.lens = 'faces';
     this.building = null;
     this.onChange = null;
@@ -345,6 +347,8 @@ export class Counter {
         return false;
       }
       sfx.pop();
+      this.fx?.sparkAt(hit.point, d.el.kind);            // شرارات بلون العدسة حيث لمس التلميذ
+      this.fx?.rise(hit.point, d.el.kind);               // وكرة طاقة ترتفع منه
       this.hud.lenses.show(b.counts(), this.lens, this.lens);
       this.onChange?.();
       return true;

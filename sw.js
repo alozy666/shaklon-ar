@@ -1,10 +1,10 @@
 // يجعل الأداة تعمل بعد أول فتح حتى لو انقطع الإنترنت.
 // الشبكة أولًا دائمًا (فتصل التحديثات فورًا)، والنسخة المخزّنة عند انقطاعها فقط.
-const CACHE = 'shaklon-v2';
+const CACHE = 'shaklon-v4';
 const CORE = [
   './', 'index.html', 'css/app.css',
   'js/main.js', 'js/config.js', 'js/stage.js', 'js/gyro.js', 'js/session.js', 'js/hud.js', 'js/input.js',
-  'js/audio.js', 'js/tween.js', 'js/buildings.js', 'js/shaklon.js',
+  'js/audio.js', 'js/tween.js', 'js/buildings.js', 'js/shaklon.js', 'js/fx.js',
   'js/scenes/common.js', 'js/scenes/city.js', 'js/scenes/exam.js', 'js/scenes/lens.js',
   'vendor/es-module-shims.js', 'vendor/three.module.min.js', 'vendor/three-addons/renderers/CSS3DRenderer.js',
   'vendor/mindar/mindar-image-three.prod.js', 'vendor/mindar/controller-mGt1s8dJ.js', 'vendor/mindar/ui-fBadYuor.js',

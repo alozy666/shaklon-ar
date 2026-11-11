@@ -2,7 +2,7 @@
 // الأوجه (faces)، الأحرف (edges)، الرؤوس (vertices). السطح المنحني والحافة المنحنية لا يُعدّان.
 // هذا الملف هو مفتاح الإجابة داخل الأداة، ويتحقق عند التشغيل من مطابقة ANSWERS في config.js.
 import * as THREE from 'three';
-import { BUILDINGS, ELEMENTS, ANSWERS } from './config.js';
+import { BUILDINGS, ELEMENTS, ANSWERS, FX_LAYER } from './config.js';
 import { tween, ease } from './tween.js';
 
 const X = new THREE.Vector3(1, 0, 0);
@@ -189,7 +189,7 @@ export class Building {
       const mesh = new THREE.Mesh(f.geo, new THREE.MeshStandardMaterial({ roughness: 0.7, side: THREE.DoubleSide }));
       mesh.position.copy(f.pos);
       mesh.quaternion.copy(f.quat);
-      const el = { kind: 'faces', mesh, proxy: mesh, lit: false, bottom: f.normal.y < -0.9 };
+      const el = { kind: 'faces', mesh, proxy: mesh, lit: false, bottom: f.normal.y < -0.9, home: f.pos.clone(), normal: f.normal.clone() };
       mesh.userData = { building: this, el };
       this.group.add(mesh);
       this.els.faces.push(el);
@@ -265,6 +265,16 @@ export class Building {
     this.glow = glowSprite('255,226,130', this.radius * 3.6, 0.55);
     this.group.add(this.glow);
 
+    // بركة ضوء على الأرض تحت المبنى المضيء: نور نوافذه يقع على السجادة (زينة، لا تُلمس ولا تُعدّ)
+    this.pool = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({
+      map: glowTexture('255,255,255'), color: new THREE.Color(this.color).lerp(new THREE.Color(WINDOW), 0.5),
+      transparent: true, opacity: 0.7, depthWrite: false, blending: THREE.AdditiveBlending,
+    }));
+    this.pool.rotation.x = -Math.PI / 2;
+    this.pool.position.y = this.bottom + 0.006;
+    this.pool.scale.setScalar(this.radius * 4.6);
+    this.group.add(this.pool);
+
     const a = ANSWERS[key];
     const t = this.totals;
     if (a && (a[0] !== t.faces || a[1] !== t.edges || a[2] !== t.vertices)) {
@@ -329,6 +339,9 @@ export class Building {
     } else {
       el.mesh.visible = el.lit;
     }
+    // الحرف والرأس المضاءان يتوهجان توهجًا حقيقيًّا (زينة فقط: ما لم يُعدّ لا يتوهج).
+    // الوجه المضاء لا: مساحته كبيرة فيطغى توهجه على أحرف المبنى ورؤوسه.
+    if (el.lit && el.kind !== 'faces') el.mesh.layers.enable(FX_LAYER); else el.mesh.layers.disable(FX_LAYER);
   }
 
   setMode(mode) {
@@ -345,7 +358,9 @@ export class Building {
       line.material.opacity = mode === 'dark' ? 0.9 : 0.6;
     }
     for (const d of this.decor) if (d.parent === this.group) d.visible = lit;
+    for (const d of this.decor) { if (lit) d.layers.enable(FX_LAYER); else d.layers.disable(FX_LAYER); }   // النوافذ والحلقات تتوهج حين تعود الأنوار
     this.glow.visible = lit;
+    this.pool.visible = lit;
   }
 
   /** يضيء عنصرًا ويعدّه. يرجع false إن كان مضيئًا من قبل (لا يُعدّ مرتين). */
@@ -371,6 +386,102 @@ export class Building {
 
   clearLights() {
     for (const k of ['faces', 'edges', 'vertices']) this.els[k].forEach((el) => { el.lit = false; el.swipe = null; this.paint(el); });
+  }
+
+  // ---- عرض «البناء» (زينة قبل بدء العدّ، لا يغيّر الأعداد) ----
+
+  /**
+   * المبنى يُبنى أمام التلاميذ من عناصره بألوان العدسات: الرؤوس (أحمر)، ثم الأحرف (أزرق)، ثم الأوجه (أصفر)، ثم يضيء.
+   * السطح المنحني يظهر بلون المبنى لا بلون الأوجه، والحافة المنحنية لا تُرسم حرفًا (كما في الدرس).
+   * عند الإضاءة يُمسح كل شيء: لا يبقى أي عنصر معدودًا. onStep(kind) عند ظهور كل عنصر، و onStep('lit') لحظة الإضاءة.
+   */
+  build({ dur = 1.25, onStep = null } = {}) {
+    const byHeight = (list, y) => list.map((el) => ({ el, y: y(el) })).sort((a, b) => a.y - b.y).map((x) => x.el);
+    const verts = byHeight(this.els.vertices, (el) => el.mesh.position.y);
+    const edges = byHeight(this.els.edges, (el) => el.mesh.position.y);
+    const faces = byHeight(this.els.faces, (el) => el.home.y);
+    const curvedOnly = !verts.length && !edges.length;
+    const win = { vertices: [0, 0.3], edges: [0.2, 0.62], faces: curvedOnly ? [0.05, 0.8] : [0.55, 0.88] };
+    const FLIP = 0.9;
+
+    this.clearLights();
+    this.setMode('lit');
+    for (const o of [this.core, this.glow, this.pool, ...this.decor, ...this.rimLines, ...this.curved]) o.visible = false;
+    for (const el of faces) { for (const c of el.mesh.children) c.visible = false; el.mesh.scale.setScalar(0.001); }
+    for (const el of edges) el.mesh.visible = false;
+
+    const seen = new Set();
+    const show = (el) => {
+      if (seen.has(el)) return;
+      seen.add(el);
+      el.lit = true;                       // بلون عدسته، مؤقتًا: يُمسح عند الإضاءة
+      this.paint(el);
+      el.mesh.visible = true;
+      onStep?.(el.kind);
+    };
+    // نصيب العنصر رقم i من نافذة نوعه: يبدأ بعد من قبله بقليل، فتظهر العناصر واحدًا واحدًا
+    const part = (k, [a, b], i, n) => Math.min(1, Math.max(0, (k - (a + (b - a) * 0.6 * (i / Math.max(1, n)))) / ((b - a) * 0.4)));
+    let flipped = false;
+    return tween({
+      dur, ease: ease.linear,
+      update: (k) => {
+        if (flipped) return;
+        if (k >= FLIP) {
+          flipped = true;
+          for (const el of faces) el.mesh.scale.setScalar(1);
+          for (const el of edges) el.mesh.visible = true;
+          for (const m of this.curved) { m.visible = true; m.scale.y = 1; }
+          for (const o of [this.core, ...this.rimLines]) o.visible = true;
+          this.clearLights();
+          this.setMode('lit');
+          onStep?.('lit');
+          return;
+        }
+        verts.forEach((el, i) => { const p = part(k, win.vertices, i, verts.length); if (p > 0) { show(el); el.mesh.scale.setScalar(0.2 + 0.8 * ease.outBack(p)); } });
+        edges.forEach((el, i) => { const p = part(k, win.edges, i, edges.length); if (p > 0) { show(el); el.mesh.scale.set(3, Math.max(0.001, ease.outCubic(p)), 3); } });
+        faces.forEach((el, i) => { const p = part(k, win.faces, i, faces.length); if (p > 0) { show(el); el.mesh.scale.setScalar(Math.max(0.001, ease.outBack(p))); } });
+        const c = Math.min(1, Math.max(0, (k - win.faces[0]) / (win.faces[1] - win.faces[0])));
+        if (c > 0) for (const m of this.curved) { m.visible = true; m.scale.y = Math.max(0.001, ease.outCubic(c)); }
+      },
+    });
+  }
+
+  // ---- عرض «عودة النور» (زينة بعد اكتمال العدّ، لا يغيّر الأعداد) ----
+
+  /** تفكيك: كل وجه يبتعد عن الهيكل على امتداد عموده (k من 0 إلى 1)، فتُرى الأوجه منفصلة عن الأحرف والرؤوس. */
+  explode(k) {
+    for (const el of this.els.faces) el.mesh.position.copy(el.home).addScaledVector(el.normal, k * this.radius * 0.5);
+  }
+
+  /** يلوَّن المبنى ثم تضيء نوافذه واحدة واحدة من الأعلى إلى الأسفل. onStep(i) عند كل نافذة. يرجع وعدًا. */
+  lightUp(onStep, dur = 0.9) {
+    this.clearLights();
+    this.setMode('lit');
+    const v = new THREE.Vector3();
+    const items = this.decor.map((d) => ({ d, y: d.getWorldPosition(v).y })).sort((a, b) => b.y - a.y).map((x) => x.d);
+    for (const d of items) d.visible = false;
+    let shown = 0;
+    return tween({
+      dur, ease: ease.linear,
+      update: (k) => {
+        const n = k >= 1 ? items.length : Math.floor(k * items.length);
+        while (shown < n) { items[shown].visible = true; onStep?.(shown); shown++; }
+      },
+    });
+  }
+
+  /**
+   * انطفاء الأنوار: ينطفئ، يومض مرة واحدة، ثم ظلام. يرجع وعدًا.
+   * ومضة واحدة فقط عن قصد: الوميض السريع المتكرر لا يناسب شاشة يشاهدها صف من الأطفال.
+   */
+  blackout() {
+    return tween({
+      dur: 0.6, ease: ease.linear,
+      update: (k) => {
+        const want = k > 0.38 && k < 0.62 ? 'lit' : 'dark';
+        if (this.mode !== want) this.setMode(want);
+      },
+    });
   }
 
   /** اهتزاز: «هذا لا يُعدّ». */
